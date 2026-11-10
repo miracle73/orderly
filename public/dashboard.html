@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orderly Dashboard</title><link rel="stylesheet" href="style.css">
+<style>.setup{display:grid;gap:14px}.setup h3{margin:0 0 8px}.ok{font-weight:600}</style></head>
+<body class="app">
+<header><h1><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span><span id="bizName">Orderly</span></h1>
+  <div id="mobileActions"><a class="btn primary" id="orderLinkM" target="_blank">Test</a><button onclick="document.getElementById('logout').click()" aria-label="Log out">⎋</button></div>
+  <nav>
+    <button data-tab="orders" class="active"><svg viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Orders</button>
+    <button data-tab="menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Menu</button>
+    <button data-tab="transcripts"><svg viewBox="0 0 24 24"><path d="M3 12h2l2-6 4 12 3-9 2 3h5"/></svg>Calls</button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Setup</button>
+    <a class="btn primary" id="orderLink" target="_blank">Test ordering</a><button id="logout">Log out</button></nav></header>
+<main>
+  <div id="banner"></div>
+  <section id="orders">
+    <h2 class="page-title">Today at a glance</h2><p class="page-sub">Every call your AI receptionist picks up lands here, live.</p>
+    <div class="stats">
+      <div class="card stat"><span class="muted">Paid today</span><b id="s-paid">-</b></div>
+      <div class="card stat"><span class="muted">Revenue today</span><b id="s-rev">-</b></div>
+      <div class="card stat"><span class="muted">Awaiting payment</span><b id="s-wait">-</b></div>
+      <div class="card stat"><span class="muted">In progress</span><b id="s-build">-</b></div>
+    </div>
+    <div class="card table-wrap"><table><thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Kitchen</th><th>Updated</th></tr></thead><tbody id="orders-body"></tbody></table></div>
+  </section>
+  <section id="menu" hidden>
+    <h2 class="page-title">Menu</h2><p class="page-sub">What your AI can sell. Prices here are the only prices it will ever quote.</p>
+    <div class="card"><form id="add-item" class="row">
+      <input name="name" placeholder="Item name" required><input name="aliases" placeholder="Other names, comma separated">
+      <input name="priceNaira" type="number" min="1" step="0.01" placeholder="Price ₦" required><button class="primary">Add item</button></form></div>
+    <div class="card table-wrap"><table><thead><tr><th>Item</th><th>Other names</th><th>Price (₦)</th><th>Available</th><th></th></tr></thead><tbody id="menu-body"></tbody></table></div>
+  </section>
+  <section id="transcripts" hidden><h2 class="page-title">Calls</h2><p class="page-sub">Recordings and transcripts of every conversation.</p><div id="tx-list"></div></section>
+  <section id="settings" hidden>
+    <h2 class="page-title">Setup</h2><p class="page-sub">Three steps and your line is live.</p>
+    <div class="setup">
+      <div class="card"><h3>1. Business</h3>
+        <form id="f-name" class="row"><input name="name" id="in-name" required><button>Save name</button></form>
+        <p class="muted">Customer ordering page (share it, or use it to test): <a id="orderLink2" target="_blank"></a></p></div>
+      <div class="card"><h3>2. Payments (Paystack) <span id="pay-status"></span></h3>
+        <p class="muted">Money goes straight to your own Paystack account. Paste your secret key from Paystack → Settings → API Keys &amp; Webhooks.</p>
+        <form id="f-pay" class="row"><input name="paystackSecretKey" type="password" placeholder="sk_live_… or sk_test_…" required style="flex:1;min-width:220px"><button class="primary">Connect Paystack</button></form>
+        <p class="muted">Then set this as your <b>Webhook URL</b> on the same Paystack page:</p><div class="code" id="webhook"></div></div>
+      <div class="card"><h3>3. Phone number <span id="phone-status"></span></h3>
+        <div id="phone-none">
+          <p class="muted">Get a number customers can call. Free Vapi numbers are US numbers; to use a Nigerian line, import a Twilio number.</p>
+          <form id="f-phone" class="row"><input name="areaCode" placeholder="US area code (optional)" style="width:200px"><button class="primary">Get a free number</button></form>
+          <details style="margin-top:10px"><summary>Use my own Twilio number</summary>
+            <form id="f-twilio" class="row" style="margin-top:8px"><input name="twilioNumber" placeholder="+234…" required><input name="twilioAccountSid" placeholder="Twilio Account SID" required><input name="twilioAuthToken" type="password" placeholder="Twilio Auth Token" required><button>Import number</button></form></details>
+        </div>
+        <p id="phone-has" hidden>Customers call <b id="phone-num"></b> and Orderly answers.</p>
+        <p class="muted">Voice agent: <span id="voice-status"></span> <button id="sync" style="margin-left:8px">Re-sync voice agent</button></p></div>
+    </div>
+  </section>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+if (!store.get('orderly_token')) location.href = 'login.html';
+$('#logout').onclick = () => { store.set('orderly_token', null); location.href = 'login.html'; };
+let tab = 'orders', me;
+document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll('nav [data-tab]').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('main section').forEach(s => s.hidden = s.id !== tab);
+  load();
+});
+const guard = fn => async e => { e?.preventDefault?.(); const btn = e?.submitter || e?.target; btn && (btn.disabled = true); try { await fn(e); } catch (err) { alert(err.message); } btn && (btn.disabled = false); };
+
+function renderMe() {
+  $('#bizName').textContent = me.name; $('#in-name').value = me.name;
+  const link = new URL('call.html?b=' + me.id, location.href).href;
+  $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link; $('#orderLink2').textContent = link;
+  $('#webhook').textContent = me.paystackWebhookUrl;
+  $('#pay-status').innerHTML = me.paystackConnected ? '<span class="ok">✓ connected</span>' : '<span class="muted">not connected</span>';
+  $('#phone-status').innerHTML = me.phoneNumber ? '<span class="ok">✓ live</span>' : '';
+  $('#phone-none').hidden = !!me.phoneNumber; $('#phone-has').hidden = !me.phoneNumber; $('#phone-num').textContent = me.phoneNumber || '';
+  $('#voice-status').innerHTML = me.voiceReady ? '<span class="ok">ready</span>' : 'not set up';
+  const todo = [!me.paystackConnected && 'connect Paystack', !me.phoneNumber && 'get a phone number'].filter(Boolean);
+  $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.join(' and ')} in <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Setup</a>. Add your menu too.</div>` : '';
+}
+async function loadMe() { me = await api('/api/me'); renderMe(); }
+
+$('#f-name').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ name: e.target.name.value }) }); renderMe(); });
+$('#f-pay').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ paystackSecretKey: e.target.paystackSecretKey.value.trim() }) }); e.target.reset(); renderMe(); });
+$('#f-phone').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
+$('#f-twilio').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
+$('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); alert('Voice agent updated.'); });
+
+async function loadOrders() {
+  const rows = await api('/api/me/orders');
+  const today = new Date().toDateString();
+  const paidToday = rows.filter(o => o.status === 'paid' && new Date(o.updated_at).toDateString() === today);
+  $('#s-paid').textContent = paidToday.length;
+  $('#s-rev').textContent = naira(paidToday.reduce((s, o) => s + o.state.totalKobo, 0));
+  $('#s-wait').textContent = rows.filter(o => o.status === 'awaiting_payment').length;
+  $('#s-build').textContent = rows.filter(o => o.status === 'building' || o.status === 'confirmed').length;
+  $('#orders-body').innerHTML = rows.map(o => `<tr>
+    <td>${o.id}</td><td>${esc(o.customer_phone || (o.call_id.startsWith('web_') ? 'web' : 'caller'))}</td>
+    <td>${o.state.items.map(i => `${i.qty} × ${esc(i.name)}`).join('<br>') || '<span class="muted">empty</span>'}</td>
+    <td>${naira(o.state.items.reduce((s, i) => s + i.priceKobo * i.qty, 0))}</td>
+    <td><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></td>
+    <td>${o.status === 'paid' ? `<select data-order="${o.id}">${['new', 'preparing', 'ready', 'delivered'].map(f => `<option ${f === o.fulfilment ? 'selected' : ''}>${f}</option>`).join('')}</select>` : '<span class="muted">—</span>'}</td>
+    <td class="muted">${new Date(o.updated_at).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No orders yet.</td></tr>';
+  document.querySelectorAll('[data-order]').forEach(s => s.onchange = () => api('/api/me/orders/' + s.dataset.order, { method: 'PATCH', body: JSON.stringify({ fulfilment: s.value }) }));
+}
+async function loadMenu() {
+  const rows = await api('/api/me/menu');
+  $('#menu-body').innerHTML = rows.map(m => `<tr><td>${esc(m.name)}</td><td class="muted">${esc(m.aliases.join(', '))}</td>
+    <td><input type="number" min="1" step="0.01" value="${m.priceKobo / 100}" data-price="${m.id}" style="width:110px"></td>
+    <td><input type="checkbox" ${m.available ? 'checked' : ''} data-avail="${m.id}"></td>
+    <td><button data-del="${m.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No items yet. Add your first one above.</td></tr>';
+  document.querySelectorAll('[data-price]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.price, { method: 'PATCH', body: JSON.stringify({ priceNaira: i.value }) }).catch(e => alert(e.message)));
+  document.querySelectorAll('[data-avail]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.avail, { method: 'PATCH', body: JSON.stringify({ available: i.checked }) }));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Delete this item?')) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
+}
+$('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); loadMenu(); });
+async function loadTranscripts() {
+  const rows = await api('/api/me/transcripts');
+  $('#tx-list').innerHTML = rows.map(t => `<details class="card"><summary><b>${esc(t.customer_phone || (t.call_id.startsWith('web_') ? 'Web order' : 'Caller'))}</b>
+    <span class="muted"> · ${new Date(t.created_at).toLocaleString()} ${t.ended_reason ? '· ' + esc(t.ended_reason) : ''}</span></summary>
+    ${t.recording_url ? `<audio controls src="${esc(t.recording_url)}" style="width:100%;margin:8px 0"></audio>` : ''}
+    <pre>${esc(t.transcript || '(empty)')}</pre></details>`).join('') || '<p class="muted">No calls yet.</p>';
+}
+const load = () => ({ orders: loadOrders, menu: loadMenu, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
+loadMe().then(load);
+setInterval(() => tab === 'orders' && load(), 5000);
+</script>
+</body></html>

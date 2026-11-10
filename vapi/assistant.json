@@ -1,0 +1,14 @@
+{
+  "name": "Orderly",
+  "firstMessage": "Hello, thanks for calling! What would you like to order today?",
+  "server": { "url": "https://YOUR_HOST/vapi", "secret": "change-me" },
+  "serverMessages": ["end-of-call-report"],
+  "model": {
+    "provider": "custom-llm",
+    "url": "https://YOUR_HOST/llm",
+    "model": "orderly",
+    "messages": [{ "role": "system", "content": "Handled server-side." }]
+  },
+  "voice": { "provider": "azure", "voiceId": "en-NG-EzinneNeural" },
+  "transcriber": { "provider": "deepgram", "model": "nova-2", "language": "en" }
+}

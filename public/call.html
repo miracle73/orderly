@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orderly Test Call</title><link rel="stylesheet" href="style.css">
+<style>
+header{max-width:1180px;margin:0 auto;padding:20px}header nav{align-items:center}header nav label{font-size:13px}
+.wrap{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}@media(max-width:860px){.wrap{grid-template-columns:1fr}header nav label.row{display:none}header{padding:14px 16px}header h1{font-size:18px}}
+.chat{padding:0;overflow:hidden}
+.chathead{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,122,26,.12),transparent)}
+.orb{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brand2),var(--brand) 55%,#7a2c00);box-shadow:0 0 0 6px rgba(255,122,26,.12),0 0 30px rgba(255,122,26,.5);animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{50%{box-shadow:0 0 0 12px rgba(255,122,26,.05),0 0 44px rgba(255,122,26,.7)}}
+#log{height:58vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:20px}
+.msg{max-width:78%;padding:12px 15px;border-radius:18px;line-height:1.5;word-wrap:break-word;font-size:15px}
+.user{align-self:flex-end;background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--brand-ink);border-bottom-right-radius:6px;font-weight:500}
+.assistant{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid var(--line);border-bottom-left-radius:6px}
+.msg a{color:inherit;font-weight:600}.tool{align-self:center;font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.03)}
+#f{padding:14px;border-top:1px solid var(--line);margin:0!important;flex-wrap:nowrap}
+#mic{border-radius:99px;height:46px;padding:0 16px;justify-content:center}
+#mic.on{background:var(--bad);border-color:var(--bad);color:#fff;box-shadow:0 0 0 6px rgba(255,93,93,.2)}#text{flex:1;min-width:0}
+.ordercard{position:sticky;top:20px}.ordercard h3{margin:0 0 14px;font-size:22px}
+#order .row{padding:8px 0}#order hr{margin:10px 0}#pay{margin-top:12px;width:100%;justify-content:center}
+@media(max-width:860px){#log{height:50vh}.ordercard{position:static}}
+</style></head>
+<body>
+<header><h1><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span><span id="bname">Order</span></h1><nav><label class="row muted"><input type="checkbox" id="speak" checked> Speak replies</label>
+<label class="row muted"><input type="checkbox" id="showTools"> Show agent steps</label><button id="vapiBtn" class="primary" hidden>📞 Real call (Vapi)</button><button id="reset">New call</button></nav></header>
+<main class="wrap">
+  <div class="card chat"><div class="chathead"><div class="orb"></div><div><b>Orderly</b><div class="muted" style="font-size:13px">AI ordering assistant · replies instantly</div></div></div><div id="log"></div>
+    <form id="f" class="row" style="margin-top:12px"><button type="button" id="mic" title="Hold a conversation by voice">🎤 Talk</button>
+      <input id="text" placeholder="Type, or press Talk and speak…" autocomplete="off"><button class="primary">Send</button></form></div>
+  <div class="card ordercard"><h3>Your order</h3><div id="order" class="muted">Empty</div>
+    <p class="muted" style="font-size:13px">This panel shows the server's state machine, not the AI's memory.</p></div>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const BID = new URLSearchParams(location.search).get('b');
+window.bizInfo = BID ? fetch(API + '/api/public/' + BID).then(r => r.ok ? r.json() : Promise.reject(new Error('Business not found'))) : Promise.reject(new Error('Missing business link'));
+window.bizInfo.then(b => { $('#bname').textContent = b.name; document.title = b.name + ' Order'; }, e => { $('#log').innerHTML = `<p class="muted">${esc(e.message)}</p>`; $('#f').hidden = true; });
+let sessionId, messages, busy = false;
+function reset() {
+  sessionId = crypto.randomUUID().replace(/-/g, '');
+  messages = [];
+  $('#log').innerHTML = ''; $('#order').textContent = 'Empty';
+  add('assistant', 'Hello, thanks for calling! What would you like to order today?');
+}
+function add(role, text) {
+  if (role !== 'tool') messages.push({ role, content: text });
+  const d = document.createElement('div'); d.className = 'msg ' + role;
+  d.innerHTML = esc(text).replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  $('#log').append(d); $('#log').scrollTop = 1e9;
+  if (role === 'assistant' && $('#speak').checked && 'speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, 'the link on screen'));
+    u.lang = 'en-NG'; u.onend = () => voiceMode && listen(); speechSynthesis.speak(u);
+  } else if (role === 'assistant' && voiceMode) listen();
+}
+function renderOrder(o) {
+  if (!o || !o.items.length) { $('#order').innerHTML = '<span class="muted">Empty</span>'; return; }
+  $('#order').innerHTML = o.items.map(i => `<div class="row" style="justify-content:space-between"><span>${i.qty} × ${esc(i.name)}</span><span>${naira(i.qty * i.priceKobo)}</span></div>`).join('')
+    + `<hr style="border:0;border-top:1px solid var(--line)"><div class="row" style="justify-content:space-between"><b>Total</b><b>${naira(o.items.reduce((s, i) => s + i.qty * i.priceKobo, 0))}</b></div>
+    <p><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></p>`;
+}
+async function send(text) {
+  if (!text.trim() || busy) return;
+  busy = true; add('user', text); $('#text').value = '';
+  const thinking = document.createElement('div'); thinking.className = 'tool'; thinking.textContent = 'Orderly is thinking…'; $('#log').append(thinking);
+  try {
+    const r = await fetch(API + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: BID, sessionId, messages }) });
+    const data = await r.json(); thinking.remove();
+    if (!r.ok) throw new Error(data.error || 'Server error');
+    if ($('#showTools').checked) data.steps.forEach(s => add('tool', `⚙ ${s.tool}(${JSON.stringify(s.args)}) → ${s.result}`));
+    add('assistant', data.reply); renderOrder(data.order);
+  } catch (e) { thinking.remove(); add('tool', '⚠ ' + e.message); }
+  busy = false;
+}
+$('#f').onsubmit = e => { e.preventDefault(); send($('#text').value); };
+$('#reset').onclick = () => { stopVoice(); reset(); };
+
+// Browser voice: hands-free loop (listen -> send -> speak -> listen) via Web Speech API.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec, voiceMode = false;
+function listen() {
+  if (!SR || !voiceMode || busy) return;
+  rec = new SR(); rec.lang = 'en-NG'; rec.interimResults = false;
+  rec.onresult = e => send(e.results[0][0].transcript);
+  rec.onerror = () => {}; rec.onend = () => { if (voiceMode && !busy && !speechSynthesis.speaking) setTimeout(listen, 300); };
+  try { rec.start(); } catch {}
+}
+function stopVoice() { voiceMode = false; $('#mic').classList.remove('on'); $('#mic').textContent = '🎤 Talk'; try { rec && rec.abort(); } catch {} speechSynthesis.cancel(); }
+$('#mic').onclick = () => {
+  if (!SR) return alert('Voice needs Chrome or Edge. You can still type.');
+  if (voiceMode) return stopVoice();
+  voiceMode = true; $('#mic').classList.add('on'); $('#mic').textContent = '⏹ Stop'; speechSynthesis.cancel(); listen();
+};
+reset();
+window._add = add; window._renderOrder = renderOrder; window._stopVoice = stopVoice; window._resetLog = () => { $('#log').innerHTML = ''; renderOrder(null); };
+</script>
+<script type="module">
+// Real voice call through Vapi (same agent + state machine as phone calls).
+import Vapi from 'https://esm.sh/@vapi-ai/web@3.1.0';
+const btn = document.getElementById('vapiBtn');
+const cfg = await window.bizInfo.then(b => ({ vapiPublicKey: b.vapiPublicKey, vapiAssistantId: b.vapiAssistantId }), () => ({}));
+if (cfg.vapiPublicKey && cfg.vapiAssistantId) {
+  btn.hidden = false;
+  const vapi = new Vapi(cfg.vapiPublicKey);
+  let callId, poll, active = false;
+  const showOrder = async () => {
+    if (!callId) return;
+    const o = await fetch(API + '/api/order/' + callId).then(r => r.json()).catch(() => null);
+    if (!o) return;
+    window._renderOrder(o);
+    if (o.paymentUrl && !document.getElementById('pay')) {
+      document.getElementById('order').insertAdjacentHTML('beforeend', `<a id="pay" class="btn primary" href="${o.paymentUrl}" target="_blank" rel="noopener">Pay now</a>`);
+    }
+  };
+  btn.onclick = async () => {
+    if (active) return vapi.stop();
+    window._stopVoice(); window._resetLog();
+    btn.textContent = 'Connecting…';
+    try { const call = await vapi.start(cfg.vapiAssistantId); callId = call?.id; }
+    catch (e) { btn.textContent = '📞 Real call (Vapi)'; window._add('tool', '⚠ ' + (e.message || 'Could not start call')); }
+  };
+  vapi.on('call-start', () => { active = true; btn.textContent = '⏹ Hang up'; poll = setInterval(showOrder, 1500); });
+  vapi.on('call-end', () => { active = false; btn.textContent = '📞 Real call (Vapi)'; clearInterval(poll); showOrder(); window._add('tool', 'Call ended.'); });
+  vapi.on('message', m => { if (m.type === 'transcript' && m.transcriptType === 'final') window._add(m.role === 'user' ? 'user' : 'tool', (m.role === 'user' ? '' : '🔊 ') + m.transcript); });
+  vapi.on('error', e => window._add('tool', '⚠ ' + (e?.error?.message || e?.message || 'Vapi error')));
+}
+</script>
+</body></html>

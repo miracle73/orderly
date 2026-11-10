@@ -1,0 +1,22 @@
+{
+  "name": "orderly",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "live": "node scripts/public.js",
+    "db:up": "docker run -d --name orderly-db -e POSTGRES_USER=orderly -e POSTGRES_PASSWORD=orderly -e POSTGRES_DB=orderly -p 5433:5432 -v orderly-pg:/var/lib/postgresql/data postgres:16",
+    "db:init": "node scripts/initDb.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "serverless-http": "^4.0.0"
+  }
+}

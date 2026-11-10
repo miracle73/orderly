@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Orderly backend - Lambda + Function URL (free tier)
+
+Parameters:
+  DatabaseUrl: { Type: String, NoEcho: true, Description: Neon pooled Postgres URL }
+  AppSecret: { Type: String, NoEcho: true }
+  OpenRouterApiKey: { Type: String, NoEcho: true }
+  OpenRouterModel: { Type: String, Default: openai/gpt-4o-mini }
+  VapiApiKey: { Type: String, NoEcho: true }
+  VapiPublicKey: { Type: String }
+  VapiSecret: { Type: String, NoEcho: true }
+  FrontendUrl: { Type: String, Description: 'Vercel URL, e.g. https://orderly.vercel.app' }
+  SmsWebhookUrl: { Type: String, Default: '' }
+  SmsApiKey: { Type: String, Default: '', NoEcho: true }
+
+Resources:
+  OrderlyApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/lambda.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 60
+      Environment:
+        Variables:
+          NODE_ENV: production
+          DATABASE_URL: !Ref DatabaseUrl
+          APP_SECRET: !Ref AppSecret
+          OPENROUTER_API_KEY: !Ref OpenRouterApiKey
+          OPENROUTER_MODEL: !Ref OpenRouterModel
+          VAPI_API_KEY: !Ref VapiApiKey
+          VAPI_PUBLIC_KEY: !Ref VapiPublicKey
+          VAPI_SECRET: !Ref VapiSecret
+          FRONTEND_URL: !Ref FrontendUrl
+          SMS_WEBHOOK_URL: !Ref SmsWebhookUrl
+          SMS_API_KEY: !Ref SmsApiKey
+      FunctionUrlConfig:
+        AuthType: NONE
+
+  PublicInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OrderlyApi
+      Action: lambda:InvokeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
+
+Outputs:
+  ApiUrl:
+    Description: Backend URL (put this in public/config.js before deploying to Vercel)
+    Value: !GetAtt OrderlyApiUrl.FunctionUrl

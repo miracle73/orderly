@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orderly Login</title><link rel="stylesheet" href="style.css">
+<style>
+.split{display:grid;grid-template-columns:1.1fr 1fr;min-height:100vh}
+.side{position:relative;overflow:hidden;padding:48px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(160deg,#1a1006,#0a0d0b 60%);border-right:1px solid var(--line)}
+.side::before{content:"";position:absolute;width:560px;height:560px;right:-160px;top:-120px;border-radius:50%;background:radial-gradient(circle,rgba(255,122,26,.45),transparent 65%);filter:blur(10px)}
+.side h2{font:800 52px/1.02 var(--display);margin:0;max-width:520px;position:relative}
+.side h2 em{font-style:normal;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.quote{position:relative;max-width:440px;padding:20px;border-radius:var(--r);background:rgba(255,255,255,.05);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.brand{display:flex;align-items:center;gap:10px;font:700 20px var(--display);position:relative}
+.formside{display:grid;place-items:center;padding:32px 20px}
+.auth{width:100%;max-width:400px}
+.auth h1{font-size:34px;margin:0 0 6px}
+.auth form{display:grid;gap:12px;margin-top:22px}.auth input{width:100%}
+.tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.tabs button{border:0;background:transparent;justify-content:center;color:var(--muted)}.tabs button.active{background:var(--card2);color:var(--ink)}
+#submit{justify-content:center;padding:14px}.err{color:var(--bad);min-height:1.2em;font-size:14px}
+@media (max-width:860px){.split{grid-template-columns:1fr}.side{padding:28px 20px 34px;min-height:auto;gap:28px}.side h2{font-size:34px}.quote{display:none}}
+</style></head>
+<body>
+<div class="split">
+  <aside class="side">
+    <div class="brand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>Orderly</div>
+    <h2>Every call answered.<br><em>Every order paid.</em></h2>
+    <div class="quote"><p style="margin:0 0 10px;font:700 18px var(--display)">“Actually, make that two.”</p><span class="muted">Orderly catches the change, reads the order back, and charges only after the customer confirms.</span></div>
+  </aside>
+  <div class="formside"><div class="auth">
+    <h1 id="title">Welcome back</h1><p class="muted" id="sub">Log in to see today's orders.</p>
+    <div class="tabs" style="margin-top:22px"><button id="t-login" class="active">Log in</button><button id="t-signup">Create account</button></div>
+    <form id="f">
+      <input name="name" placeholder="Business name" hidden>
+      <input name="email" type="email" placeholder="Email" required autocomplete="email">
+      <input name="password" type="password" placeholder="Password (8+ characters)" required minlength="8" autocomplete="current-password">
+      <button class="primary" id="submit">Log in</button>
+      <div class="err" id="err"></div>
+    </form>
+  </div></div>
+</div>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+if (store.get('orderly_token')) location.href = 'dashboard.html';
+let mode = new URLSearchParams(location.search).get('signup') !== null ? 'signup' : 'login';
+function setMode(m) {
+  mode = m;
+  $('#t-login').classList.toggle('active', m === 'login'); $('#t-signup').classList.toggle('active', m === 'signup');
+  $('[name=name]').hidden = m === 'login'; $('[name=name]').required = m === 'signup';
+  $('#submit').textContent = m === 'login' ? 'Log in' : 'Create account';
+  $('#title').textContent = m === 'login' ? 'Welcome back' : 'Start taking orders';
+  $('#sub').textContent = m === 'login' ? "Log in to see today's orders." : 'Set up your AI receptionist in under 5 minutes.';
+}
+setMode(mode);
+$('#t-login').onclick = () => setMode('login'); $('#t-signup').onclick = () => setMode('signup');
+$('#f').onsubmit = async e => {
+  e.preventDefault(); $('#err').textContent = ''; $('#submit').disabled = true;
+  try {
+    const { token } = await api('/api/auth/' + mode, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) });
+    store.set('orderly_token', token); location.href = 'dashboard.html';
+  } catch (err) { $('#err').textContent = err.message; }
+  $('#submit').disabled = false;
+};
+</script>
+</body></html>

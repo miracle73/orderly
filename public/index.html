@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orderly</title><meta name="description" content="An AI receptionist that answers your business line, takes orders and collects payment.">
+<link rel="stylesheet" href="style.css">
+<style>
+.nav{display:flex;align-items:center;gap:12px;max-width:1180px;margin:0 auto;padding:22px 20px}
+.nav .brand{display:flex;align-items:center;gap:10px;font:700 20px var(--display);margin-right:auto}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:56px 0 90px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;background:rgba(255,122,26,.12);border:1px solid rgba(255,122,26,.3);color:var(--brand2);font-size:13px;font-weight:600}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px rgba(61,220,151,.2);animation:pulse 1.6s infinite}
+.hero h1{font:800 clamp(44px,6.4vw,84px)/.98 var(--display);margin:22px 0 20px;letter-spacing:-.035em}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--brand),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:19px;line-height:1.55;color:#c9c3b8;max-width:520px;margin:0 0 30px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}.cta .btn{padding:15px 22px;font-size:15px}
+.trust{display:flex;gap:26px;margin-top:38px;flex-wrap:wrap}.trust b{display:block;font:700 26px var(--display)}.trust span{font-size:13px;color:var(--muted)}
+/* phone mock */
+.stage{position:relative;display:grid;place-items:center}
+.stage::before{content:"";position:absolute;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(255,122,26,.35),transparent 65%)}
+.phone{position:relative;width:330px;border-radius:44px;padding:14px;background:linear-gradient(160deg,#1d231f,#0d110f);border:1px solid rgba(255,255,255,.12);box-shadow:0 40px 90px -20px rgba(0,0,0,.8),inset 0 0 0 1px rgba(255,255,255,.04);transform:rotate(-3deg)}
+.screen{border-radius:32px;background:#0b0f0d;padding:22px 16px 18px;min-height:560px;display:flex;flex-direction:column;gap:12px}
+.caller{text-align:center;padding:6px 0 8px}.caller b{font:700 20px var(--display)}.caller div{font-size:12px;color:var(--mint);margin-top:4px}
+.wave{display:flex;gap:4px;justify-content:center;align-items:center;height:36px}
+.wave span{width:4px;border-radius:4px;background:linear-gradient(var(--brand),var(--brand2));animation:wave 1.1s ease-in-out infinite}
+.bubble{padding:11px 13px;border-radius:16px;font-size:13.5px;line-height:1.45;max-width:86%}
+.bubble.c{align-self:flex-end;background:rgba(255,255,255,.08);border-bottom-right-radius:5px}
+.bubble.a{align-self:flex-start;background:linear-gradient(135deg,rgba(255,122,26,.22),rgba(255,181,71,.1));border:1px solid rgba(255,122,26,.25);border-bottom-left-radius:5px}
+.ticket{margin-top:auto;border-radius:18px;padding:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:13px}
+.ticket .l{display:flex;justify-content:space-between;padding:4px 0}.ticket .t{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;font-weight:700}
+.float{position:absolute;padding:12px 14px;border-radius:16px;background:rgba(20,25,22,.85);backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:0 20px 40px rgba(0,0,0,.5);font-size:13px;display:flex;gap:10px;align-items:center}
+.float .ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:800}
+.f1{left:-10px;top:70px}.f1 .ic{background:rgba(61,220,151,.18);color:var(--mint)}
+.f2{right:-40px;bottom:-18px}.f2 .ic{background:rgba(255,122,26,.2);color:var(--brand2)}
+/* sections */
+.sec{padding:80px 0;border-top:1px solid var(--line)}
+.sec h2{font:800 clamp(32px,4vw,50px)/1.05 var(--display);margin:0 0 14px;max-width:700px}
+.sec .sub{color:var(--muted);font-size:17px;max-width:600px;margin:0 0 44px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.step{padding:26px;border-radius:22px;background:var(--card);border:1px solid var(--line);position:relative;overflow:hidden}
+.step .n{font:800 64px/1 var(--display);background:linear-gradient(180deg,rgba(255,122,26,.7),transparent);-webkit-background-clip:text;background-clip:text;color:transparent}
+.step h3{font-size:21px;margin:14px 0 8px}.step p{color:var(--muted);margin:0;line-height:1.55}
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.tile{padding:26px;border-radius:22px;background:var(--card);border:1px solid var(--line);min-height:190px}
+.tile h3{font-size:20px;margin:0 0 8px}.tile p{color:var(--muted);margin:0;line-height:1.55}
+.t1{grid-column:span 4;background:linear-gradient(140deg,rgba(255,122,26,.16),rgba(255,255,255,.02))}.t2{grid-column:span 2}.t3{grid-column:span 2}.t4{grid-column:span 4}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chips span{padding:7px 12px;border-radius:99px;background:rgba(0,0,0,.35);border:1px solid var(--line);font-size:13px}
+.final{text-align:center;padding:90px 24px;margin:40px 0 70px;border-radius:32px;background:radial-gradient(60% 90% at 50% 0%,rgba(255,122,26,.35),transparent 70%),var(--card);border:1px solid rgba(255,122,26,.25)}
+.final h2{margin:0 auto 14px;font:800 clamp(32px,4.4vw,56px)/1.05 var(--display);max-width:760px}.final .cta{justify-content:center}
+footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+@keyframes wave{0%,100%{height:8px}50%{height:34px}}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(61,220,151,0)}}
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;padding:28px 0 60px;gap:56px}.hero p.lead{font-size:17px}
+  .steps{grid-template-columns:1fr}.bento{grid-template-columns:1fr}.t1,.t2,.t3,.t4{grid-column:auto}
+  .nav .hide-m{display:none}.phone{transform:none;width:300px}.f1{left:0}.f2{right:0}.sec{padding:60px 0}
+}
+</style></head>
+<body>
+<nav class="nav">
+  <div class="brand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>Orderly</div>
+  <a class="btn hide-m" href="#how" style="border:0;background:none">How it works</a>
+  <a class="btn" href="login.html">Log in</a>
+  <a class="btn primary" href="login.html?signup">Get started</a>
+</nav>
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <span class="eyebrow"><i></i>Your AI receptionist is on the line</span>
+      <h1>Never miss<br>an order <em>again.</em></h1>
+      <p class="lead">Orderly answers your business line, takes orders in natural Nigerian English and Pidgin, confirms every item, and sends a Paystack link. You just cook.</p>
+      <div class="cta"><a class="btn primary" href="login.html?signup">Start free →</a><a class="btn" href="#how">See how it works</a></div>
+      <div class="trust"><div><b>24/7</b><span>Answers every call</span></div><div><b>0</b><span>Wrong totals, by design</span></div><div><b>5 min</b><span>To go live</span></div></div>
+    </div>
+    <div class="stage">
+      <div class="phone"><div class="screen">
+        <div class="caller"><b>Mama Put Kitchen</b><div>● Orderly · 01:24</div></div>
+        <div class="wave"><span style="animation-delay:0s"></span><span style="animation-delay:.1s"></span><span style="animation-delay:.2s"></span><span style="animation-delay:.3s"></span><span style="animation-delay:.4s"></span><span style="animation-delay:.5s"></span><span style="animation-delay:.6s"></span><span style="animation-delay:.7s"></span></div>
+        <div class="bubble c">Two jollof and one chicken abeg</div>
+        <div class="bubble a">Got it: 2 Jollof Rice and 1 Chicken. Anything else?</div>
+        <div class="bubble c">Actually, make the chicken two</div>
+        <div class="bubble a">Done. That's ₦8,000. Shall I confirm?</div>
+        <div class="ticket"><div class="l"><span>2 × Jollof Rice</span><span>₦5,000</span></div><div class="l"><span>2 × Chicken</span><span>₦3,000</span></div><div class="l t"><span>Total</span><span>₦8,000</span></div></div>
+      </div></div>
+      <div class="float f1"><span class="ic">✓</span><div><b>Payment received</b><div class="muted">₦8,000 · Paystack</div></div></div>
+      <div class="float f2"><span class="ic">↻</span><div><b>Order updated</b><div class="muted">Chicken 1 → 2</div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="how">
+    <h2>From ring to receipt in one call.</h2>
+    <p class="sub">No app for your customers to download. They call the number they already know.</p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Customer calls</h3><p>Orderly picks up instantly, even during the lunch rush or at midnight.</p></div>
+      <div class="step"><div class="n">02</div><h3>AI takes the order</h3><p>It understands changes like “make that two”, reads the order back and confirms.</p></div>
+      <div class="step"><div class="n">03</div><h3>Paid and in the kitchen</h3><p>A Paystack link goes out, money lands in your account, and the order appears on your dashboard.</p></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Built so a confused call can't cost you money.</h2>
+    <p class="sub">The AI talks. A separate, deterministic order system holds the basket and checks every change.</p>
+    <div class="bento">
+      <div class="tile t1"><h3>Prices come from your menu, never the AI</h3><p>Every add, change and removal is validated. Payment only counts when the amount and reference match exactly.</p><div class="chips"><span>Validated tool calls</span><span>Kobo-exact totals</span><span>Signed webhooks</span></div></div>
+      <div class="tile t2"><h3>Your money, your account</h3><p>Connect your own Paystack. No middleman taking a cut.</p></div>
+      <div class="tile t3"><h3>Every call recorded</h3><p>Transcripts and recordings for quality checks.</p></div>
+      <div class="tile t4"><h3>A live kitchen board</h3><p>Paid orders move from new to preparing, ready and delivered, with today's revenue at a glance.</p></div>
+    </div>
+  </section>
+
+  <section class="final">
+    <h2>Your phone, finally working for you.</h2>
+    <p class="sub" style="margin:0 auto 30px">Set up your menu, connect Paystack, get a number. That's it.</p>
+    <div class="cta"><a class="btn primary" href="login.html?signup">Create your account →</a></div>
+  </section>
+</div>
+<footer><span>© 2026 Orderly</span><span>Made for Nigerian small businesses</span></footer>
+</body></html>
