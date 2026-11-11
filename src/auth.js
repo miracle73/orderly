@@ -21,12 +21,22 @@ function signToken(payload, ttlSec = 7 * 86400) {
 }
 
 function verifyToken(token) {
-  const [body, sig] = String(token || '').split('.');
+  const parts = String(token || '').split('.');
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
   if (!body || !sig) return null;
-  const expected = crypto.createHmac('sha256', key('token')).update(body).digest('base64url');
-  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-  const p = JSON.parse(Buffer.from(body, 'base64url'));
-  return p.exp > Date.now() / 1000 ? p : null;
+
+  try {
+    const expected = crypto.createHmac('sha256', key('token')).update(body).digest('base64url');
+    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+
+    const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!p || typeof p !== 'object' || Array.isArray(p) || typeof p.bid !== 'string' || !p.bid ||
+        typeof p.exp !== 'number' || !Number.isFinite(p.exp)) return null;
+    return p.exp > Date.now() / 1000 ? p : null;
+  } catch {
+    return null;
+  }
 }
 
 function encrypt(text) {
