@@ -23,6 +23,7 @@ const stamp = Date.now();
 const created = { emails: [], phoneIds: [] };
 
 (async () => {
+  if (process.argv.includes('--cleanup-only')) return cleanup();
   console.log(`API ${API}\nWEB ${WEB}\n`);
 
   // --- Frontend
