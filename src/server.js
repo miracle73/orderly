@@ -88,6 +88,7 @@ app.post('/api/auth/verify', wrap(async (req, res) => {
   const b = token && await store.getBusinessByVerifyHash(sha256(token));
   if (!b || Date.now() - new Date(b.verify_sent_at).getTime() > VERIFY_TTL_MS) throw httpError(400, 'This link is invalid or has expired. Request a new one.');
   await store.updateBusiness(b.id, { email_verified: true, verify_token_hash: null });
+  await email.sendWelcome(b);
   res.json({ token: auth.signToken({ bid: b.id }) });
 }));
 
@@ -266,6 +267,7 @@ app.post(['/paystack/webhook', '/paystack/webhook/:businessId'], wrap(async (req
       } catch (e) { if (e.message === 'Unknown payment reference') return res.sendStatus(200); throw e; }
       const b = await store.getBusiness((await store.pool.query('SELECT business_id FROM orders WHERE id=$1', [r.orderId])).rows[0].business_id);
       if (r.ok && r.phone) await sms.send(r.phone, `${b.name}: payment received. Order #${r.orderId} is being prepared. Thank you!`).catch(console.error);
+      if (r.ok) await email.sendPaymentReceived(b, r.orderId, r.order, r.phone);
       if (!r.ok) console.warn('payment rejected by state machine', tx.reference, r.error);
     }
   }

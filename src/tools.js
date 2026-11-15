@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const store = require('./store');
 const paystack = require('./paystack');
 const sms = require('./sms');
+const email = require('./email');
 const { summarize } = require('./orderMachine');
 
 const naira = k => `₦${(k / 100).toLocaleString('en-NG')}`;
@@ -21,6 +22,7 @@ const handlers = {
   async remove_item({ item }, ctx) { return reply(await mutate(ctx, { type: 'remove_item', item })); },
   async confirm_order(_, ctx) {
     const r = await mutate(ctx, { type: 'confirm_order' });
+    if (r.ok) await email.sendOrderConfirmed(ctx.business, r.orderId, r.order, ctx.phone || (ctx.channel === 'web' ? 'web order' : null));
     return r.ok ? `CONFIRMED. ${summarize(r.order)} Now call send_payment_link.` : reply(r);
   },
   async cancel_order(_, ctx) { return reply(await mutate(ctx, { type: 'cancel_order' })); },
