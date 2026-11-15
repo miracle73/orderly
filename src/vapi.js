@@ -20,6 +20,7 @@ const assistantConfig = (b, baseUrl) => ({
   },
   server: { url: `${baseUrl}/vapi/${b.id}`, secret: process.env.VAPI_SECRET },
   serverMessages: ['end-of-call-report'],
+  endCallPhrases: ['goodbye', 'bye bye'],
   voice: { provider: 'azure', voiceId: 'en-NG-EzinneNeural' },
   transcriber: { provider: 'deepgram', model: 'nova-2', language: 'en' },
 });

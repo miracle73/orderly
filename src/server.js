@@ -11,6 +11,7 @@ const email = require('./email');
 const crypto = require('crypto');
 const { runTool } = require('./tools');
 const { runAgent, runRouter } = require('./agent');
+const { forSpeech } = require('./speech');
 
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -248,6 +249,7 @@ app.post('/llm/:key/:businessId/chat/completions', wrap(async (req, res) => {
     }
   } catch (e) { console.error('agent error', e); reply = 'Sorry, I had a small problem. Could you say that again?'; }
 
+  reply = forSpeech(reply); // amounts in words, no links/markdown for the phone voice
   const id = `chatcmpl-${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
   if (req.body.stream === false) {

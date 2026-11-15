@@ -16,6 +16,7 @@ const api = async (method, path, body) => {
     model: { provider: 'custom-llm', url: `${base}/llm/${VAPI_SECRET}/shared`, model: 'orderly', messages: [{ role: 'system', content: 'Handled server-side by Orderly.' }] },
     server: { url: `${base}/vapi/shared`, secret: VAPI_SECRET },
     serverMessages: ['end-of-call-report'],
+    endCallPhrases: ['goodbye', 'bye bye'],
     voice: { provider: 'azure', voiceId: 'en-NG-EzinneNeural' },
     transcriber: { provider: 'deepgram', model: 'nova-2', language: 'en' },
   };

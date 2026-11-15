@@ -122,7 +122,7 @@ if (cfg.vapiPublicKey && cfg.vapiAssistantId) {
   vapi.on('call-start', () => { active = true; btn.textContent = '⏹ Hang up'; poll = setInterval(showOrder, 1500); });
   vapi.on('call-end', () => { active = false; btn.textContent = '📞 Real call (Vapi)'; clearInterval(poll); showOrder(); window._add('tool', 'Call ended.'); });
   vapi.on('message', m => { if (m.type === 'transcript' && m.transcriptType === 'final') window._add(m.role === 'user' ? 'user' : 'tool', (m.role === 'user' ? '' : '🔊 ') + m.transcript); });
-  vapi.on('error', e => window._add('tool', '⚠ ' + (e?.error?.message || e?.message || 'Vapi error')));
+  vapi.on('error', e => { const m = e?.errorMsg || e?.error?.message || e?.error?.msg || e?.message || (typeof e?.error === 'string' ? e.error : ''); if (!/ended|ejected/i.test(m)) window._add('tool', '⚠ ' + (m || 'The call had a problem. Please try again.')); });
 }
 </script>
 </body></html>
