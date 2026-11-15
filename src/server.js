@@ -135,7 +135,9 @@ me.post('/payout', wrap(async (req, res) => {
     if (e.paystack) throw httpError(400, `Couldn't verify that account: ${e.message}`);
     throw e;
   }
-  res.json(profile(await businessOr404(b.id), req));
+  const updated = await businessOr404(b.id);
+  await email.sendPayoutUpdated(updated);
+  res.json(profile(updated, req));
 }));
 
 me.post('/voice/sync',wrap(async (req, res) => {
