@@ -15,7 +15,7 @@
 .auth form{display:grid;gap:12px;margin-top:22px}.auth input{width:100%}
 .tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
 .tabs button{border:0;background:transparent;justify-content:center;color:var(--muted)}.tabs button.active{background:var(--card2);color:var(--ink)}
-#submit{justify-content:center;padding:14px}.err{color:var(--bad);min-height:1.2em;font-size:14px}
+#submit{justify-content:center;padding:14px}
 @media (max-width:860px){.split{grid-template-columns:1fr}.side{padding:28px 20px 34px;min-height:auto;gap:28px}.side h2{font-size:34px}.quote{display:none}}
 </style></head>
 <body>
@@ -32,9 +32,14 @@
       <input name="name" placeholder="Business name" hidden>
       <input name="email" type="email" placeholder="Email" required autocomplete="email">
       <input name="password" type="password" placeholder="Password (8+ characters)" required minlength="8" autocomplete="current-password">
+      <a href="#" id="forgotLink" class="muted" style="font-size:13.5px;justify-self:end;text-decoration:none">Forgot password?</a>
       <button class="primary" id="submit">Log in</button>
-      <div class="err" id="err"></div>
       <button type="button" id="resend" hidden>Resend verification email</button>
+    </form>
+    <form id="forgotBox" hidden style="display:grid;gap:12px;margin-top:22px">
+      <input name="email" type="email" placeholder="Your account email" required autocomplete="email">
+      <button class="primary" style="justify-content:center;padding:14px">Email me a reset link</button>
+      <a href="#" id="backToLogin" class="muted" style="font-size:13.5px;text-decoration:none">← Back to log in</a>
     </form>
     <div id="checkmail" hidden style="margin-top:22px" class="card"><h3 style="margin:0 0 8px">📬 Check your inbox</h3>
       <p class="muted" style="margin:0 0 14px">We sent a verification link to <b id="sentTo"></b>. Click it to activate your account.</p>
@@ -50,26 +55,40 @@ function setMode(m) {
   $('#t-login').classList.toggle('active', m === 'login'); $('#t-signup').classList.toggle('active', m === 'signup');
   $('[name=name]').hidden = m === 'login'; $('[name=name]').required = m === 'signup';
   $('#submit').textContent = m === 'login' ? 'Log in' : 'Create account';
+  $('#forgotLink').hidden = m !== 'login';
   $('#title').textContent = m === 'login' ? 'Welcome back' : 'Start taking orders';
   $('#sub').textContent = m === 'login' ? "Log in to see today's orders." : 'Set up your AI receptionist in under 5 minutes.';
 }
 setMode(mode);
 $('#t-login').onclick = () => setMode('login'); $('#t-signup').onclick = () => setMode('signup');
 $('#f').onsubmit = async e => {
-  e.preventDefault(); $('#err').textContent = ''; $('#submit').disabled = true;
+  e.preventDefault(); $('#submit').disabled = true; $('#resend').hidden = true;
   try {
     const r = await api('/api/auth/' + mode, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) });
     if (r.verifyRequired) {
       $('#f').hidden = true; document.querySelector('.tabs').hidden = true; $('#checkmail').hidden = false; $('#sentTo').textContent = r.email;
       $('#title').textContent = 'Almost there'; $('#sub').textContent = 'Verify your email to finish setting up.';
-    } else { store.set('orderly_token', r.token); location.href = 'dashboard.html'; }
-  } catch (err) { $('#err').textContent = err.message; $('#resend').hidden = !/verify/i.test(err.message); }
+      toast('Account created! Check your email to verify it.');
+    } else { store.set('orderly_token', r.token); store.set('orderly_flash', 'Welcome back!'); location.href = 'dashboard.html'; }
+  } catch (err) { toast(err.message, 'error'); $('#resend').hidden = !/verify/i.test(err.message); }
   $('#submit').disabled = false;
 };
 const resend = async btn => {
   btn.disabled = true;
   await api('/api/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email: $('[name=email]').value }) }).catch(() => {});
-  btn.textContent = 'Sent! Check your inbox'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Resend email'; }, 60000);
+  toast('Verification email sent. Check your inbox.'); btn.textContent = 'Sent! Check your inbox'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Resend email'; }, 60000);
+};
+const showForgot = on => {
+  $('#f').hidden = on; document.querySelector('.tabs').hidden = on; $('#forgotBox').hidden = !on;
+  $('#title').textContent = on ? 'Forgot your password?' : 'Welcome back'; $('#sub').textContent = on ? "Enter your email and we'll send you a reset link." : "Log in to see today's orders.";
+};
+$('#forgotLink').onclick = e => { e.preventDefault(); showForgot(true); };
+$('#backToLogin').onclick = e => { e.preventDefault(); showForgot(false); };
+$('#forgotBox').onsubmit = async e => {
+  e.preventDefault(); const btn = e.submitter; btn.disabled = true;
+  try { await api('/api/auth/forgot', { method: 'POST', body: JSON.stringify({ email: e.target.email.value }) }); toast('If that email has an account, a reset link is on its way.'); }
+  catch (err) { toast(err.message, 'error'); }
+  btn.disabled = false;
 };
 $('#resend').onclick = () => resend($('#resend')); $('#resend2').onclick = () => resend($('#resend2'));
 </script>

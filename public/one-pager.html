@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orderly One-Pager</title><meta name="description" content="Orderly: an AI receptionist that answers phone orders and collects payment for Nigerian small businesses.">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="docs.css"></head>
+<body><div class="doc">
+<nav><a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>Orderly</a>
+<a class="l on" href="one-pager.html">One-pager</a><a class="l" href="faq.html">FAQ</a><a class="l" href="guide.html">User guide</a><a class="btn primary" href="login.html?signup">Get started</a></nav>
+
+<h1>Orderly</h1>
+<p class="lead">An AI receptionist that answers a small business's phone, takes orders in natural Nigerian English and Pidgin, confirms them, and collects payment through Paystack.</p>
+
+<h2>The problem</h2>
+<p>Nigerian food vendors and small shops lose sales every day to unanswered calls. The phone rings during the lunch rush, nobody picks up, and the customer orders elsewhere. Hiring someone to answer the phone full time isn't affordable for most of them.</p>
+
+<h2>The solution</h2>
+<div class="grid">
+  <div class="card"><b>📞 Answers every call</b><p>One shared line serves every business. Callers say the business name or its 4-digit code and are put straight through.</p></div>
+  <div class="card"><b>🧠 Takes the order naturally</b><p>Understands "make that two", Pidgin and changes of mind, reads the order back, and only proceeds on a clear yes.</p></div>
+  <div class="card"><b>💳 Collects payment</b><p>Sends a Paystack link. The money settles into the business's own bank account through a Paystack subaccount.</p></div>
+  <div class="card"><b>📋 Live kitchen board</b><p>Paid orders appear on the dashboard and move from new to preparing, ready and delivered. Email alerts for every order.</p></div>
+</div>
+
+<h2>Why it's safe</h2>
+<p>The AI only talks. A separate, deterministic order system holds the basket and checks every change through a validated tool call. Prices come from the business's menu, never from the AI, and a payment counts only when its amount and reference match exactly. A confused turn of conversation can't corrupt an order or charge someone the wrong amount.</p>
+
+<h2>How it works</h2>
+<ol><li>Customer calls the shared line, or opens the business's ordering page.</li><li>The AI takes the order and confirms it.</li><li>Paystack link → customer pays → the order is marked <b>Paid</b> and the business gets an email.</li><li>The kitchen prepares it and updates its status.</li></ol>
+
+<h2>Built with</h2>
+<table><tr><th>Voice</th><td>Vapi (speech-to-text and text-to-speech; the conversation is handled by our own agent)</td></tr>
+<tr><th>AI</th><td>OpenRouter LLM with a server-side tool-calling agent loop</td></tr>
+<tr><th>Payments</th><td>Paystack (platform account + per-business subaccounts)</td></tr>
+<tr><th>Backend</th><td>Node.js on AWS Lambda, Neon Postgres</td></tr>
+<tr><th>Frontend</th><td>Static site on Vercel</td></tr>
+<tr><th>Email</th><td>Gmail SMTP with branded templates</td></tr></table>
+
+<h2>Who it's for</h2>
+<p>Restaurants, bukas, food vendors, bakeries and small shops in Nigeria that take orders by phone or WhatsApp and can't afford a support team.</p>
+<div class="callout">Try it: <a href="login.html?signup">create a business</a> in under 5 minutes.</div>
+</div></body></html>

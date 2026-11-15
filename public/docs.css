@@ -1,0 +1,18 @@
+.doc{max-width:860px;margin:0 auto;padding:28px 20px 70px}
+.doc nav{display:flex;align-items:center;gap:10px;margin-bottom:34px;flex-wrap:wrap}
+.doc nav .brand{display:flex;align-items:center;gap:10px;font:700 20px var(--display);margin-right:auto;color:var(--ink);text-decoration:none}
+.doc nav a.l{color:var(--muted);text-decoration:none;font-size:14px;padding:8px 10px;border-radius:10px}.doc nav a.l:hover,.doc nav a.l.on{color:var(--ink);background:var(--card2)}
+.doc h1{font:800 clamp(34px,5vw,52px)/1.05 var(--display);margin:0 0 12px}
+.doc h2{font-size:26px;margin:44px 0 12px}.doc h3{font-size:19px;margin:26px 0 8px}
+.doc p,.doc li{color:#d6d0c5;line-height:1.7;font-size:16px}.doc .lead{font-size:19px;color:#e8e2d7}
+.doc ul,.doc ol{padding-left:22px}.doc li{margin:6px 0}
+.doc .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:18px 0}
+.doc .grid .card{margin:0}.doc .grid .card b{display:block;font:700 17px var(--display);margin-bottom:6px;color:var(--ink)}
+.doc .grid .card p{margin:0;font-size:14.5px}
+.doc details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:10px 0}
+.doc summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none}.doc summary::-webkit-details-marker{display:none}
+.doc summary::after{content:"+";float:right;color:var(--brand2);font-weight:700}.doc details[open] summary::after{content:"–"}
+.doc details p{margin:10px 0 0}
+.doc code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;font-size:14px}
+.doc .callout{padding:16px 18px;border-radius:14px;background:rgba(255,122,26,.09);border:1px solid rgba(255,122,26,.28);margin:18px 0}
+.doc table{width:100%;border-collapse:collapse;margin:14px 0}.doc th,.doc td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:15px}

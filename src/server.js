@@ -103,6 +103,33 @@ app.post('/api/auth/resend-verification', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- Password reset ----------
+const RESET_TTL_MS = 3600 * 1000;
+const strongEnough = p => String(p || '').length >= 8;
+
+// Always answers OK so it can't be used to discover which emails have accounts.
+app.post('/api/auth/forgot', wrap(async (req, res) => {
+  const b = await store.getBusinessByEmail(String(req.body?.email || ''));
+  if (b && (!b.reset_sent_at || Date.now() - new Date(b.reset_sent_at).getTime() > 60000)) {
+    const token = crypto.randomBytes(32).toString('base64url');
+    await store.updateBusiness(b.id, { reset_token_hash: sha256(token), reset_sent_at: new Date() });
+    const origin = process.env.FRONTEND_URL || req.get('origin') || baseUrl(req);
+    try { await email.sendPasswordReset(b.email, b.name, `${origin}/reset.html?token=${token}`); } catch (e) { console.error('reset email failed', e.message); }
+  }
+  res.json({ ok: true });
+}));
+
+app.post('/api/auth/reset', wrap(async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!strongEnough(password)) throw httpError(400, 'Password must be at least 8 characters');
+  const b = token && await store.getBusinessByResetHash(sha256(String(token)));
+  if (!b || Date.now() - new Date(b.reset_sent_at).getTime() > RESET_TTL_MS) throw httpError(400, 'This reset link is invalid or has expired. Request a new one.');
+  // Clicking an emailed link also proves the email address.
+  await store.updateBusiness(b.id, { password_hash: auth.hashPassword(password), reset_token_hash: null, email_verified: true });
+  await email.sendPasswordChanged(b);
+  res.json({ token: auth.signToken({ bid: b.id }) });
+}));
+
 app.get('/api/banks', wrap(async (_req, res) => res.json(await paystack.listBanks())));
 
 // ---------- Business (logged in) ----------
@@ -162,6 +189,16 @@ me.post('/phone-number', wrap(async (req, res) => {
     await store.updateBusiness(b.id, { vapi_phone_number_id: id, phone_number: number });
   } catch (e) { throw httpError(502, e.message); }
   res.json(profile(await businessOr404(b.id), req));
+}));
+
+me.post('/password', wrap(async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  const b = await businessOr404(req.businessId);
+  if (!auth.checkPassword(String(currentPassword || ''), b.password_hash)) throw httpError(400, 'Your current password is wrong');
+  if (!strongEnough(newPassword)) throw httpError(400, 'New password must be at least 8 characters');
+  await store.updateBusiness(b.id, { password_hash: auth.hashPassword(newPassword) });
+  await email.sendPasswordChanged(b);
+  res.json({ ok: true });
 }));
 
 me.get('/orders', wrap(async (req, res) => res.json(await store.listOrders(req.businessId))));

@@ -77,3 +77,8 @@ CREATE TABLE IF NOT EXISTS call_routes (
   business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- v4: password reset
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS reset_token_hash TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS reset_sent_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS businesses_reset_idx ON businesses (reset_token_hash);

@@ -10,6 +10,7 @@ const transport = () => gmail || (gmail = nodemailer.createTransport({
 const from = () => process.env.EMAIL_FROM || `Orderly <${process.env.GMAIL_USER || 'onboarding@resend.dev'}>`;
 
 async function send(to, { subject, html, text }) {
+  if (/@example.(com|org|net)$/i.test(to)) return console.log(`[email skipped: test address] ${to} · ${subject}`);
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
     return transport().sendMail({ from: from(), to, subject, html, text });
   }
@@ -34,5 +35,7 @@ module.exports = {
   sendWelcome: b => safe(send(b.email, T.welcome({ businessName: b.name, shortCode: b.short_code, sharedNumber: shared() }))),
   sendOrderConfirmed: (b, orderId, order, customer) => safe(send(b.email, T.newOrder({ businessName: b.name, orderId, order, customer }))),
   sendPaymentReceived: (b, orderId, order, customer) => safe(send(b.email, T.paymentReceived({ orderId, order, customer }))),
+  sendPasswordReset: (to, businessName, link) => send(to, T.passwordReset({ businessName, link })),
+  sendPasswordChanged: b => safe(send(b.email, T.passwordChanged({ businessName: b.name }))),
   sendPayoutUpdated: b => safe(send(b.email, T.payoutUpdated({ accountName: b.account_name, bankName: b.bank_name, last4: String(b.account_number).slice(-4) }))),
 };

@@ -18,3 +18,16 @@ async function api(path, opts = {}) {
   if (!r.ok) throw new Error(body.error || 'Request failed');
   return body;
 }
+
+// Toast notifications (success / error / info) — replaces alerts and inline messages.
+function toast(msg, type = 'success') {
+  let box = document.getElementById('toasts');
+  if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); }
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  t.innerHTML = `<span class="ti">${type === 'error' ? '!' : type === 'info' ? 'i' : '✓'}</span><span></span>`;
+  t.lastChild.textContent = msg;
+  t.onclick = () => t.remove();
+  box.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, type === 'error' ? 5500 : 3200);
+}

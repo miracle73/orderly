@@ -69,7 +69,7 @@ async function send(text) {
     if (!r.ok) throw new Error(data.error || 'Server error');
     if ($('#showTools').checked) data.steps.forEach(s => add('tool', `⚙ ${s.tool}(${JSON.stringify(s.args)}) → ${s.result}`));
     add('assistant', data.reply); renderOrder(data.order);
-  } catch (e) { thinking.remove(); add('tool', '⚠ ' + e.message); }
+  } catch (e) { thinking.remove(); toast(e.message, 'error'); }
   busy = false;
 }
 $('#f').onsubmit = e => { e.preventDefault(); send($('#text').value); };
@@ -87,7 +87,7 @@ function listen() {
 }
 function stopVoice() { voiceMode = false; $('#mic').classList.remove('on'); $('#mic').textContent = '🎤 Talk'; try { rec && rec.abort(); } catch {} speechSynthesis.cancel(); }
 $('#mic').onclick = () => {
-  if (!SR) return alert('Voice needs Chrome or Edge. You can still type.');
+  if (!SR) return toast('Voice needs Chrome or Edge. You can still type.', 'info');
   if (voiceMode) return stopVoice();
   voiceMode = true; $('#mic').classList.add('on'); $('#mic').textContent = '⏹ Stop'; speechSynthesis.cancel(); listen();
 };
@@ -117,12 +117,12 @@ if (cfg.vapiPublicKey && cfg.vapiAssistantId) {
     window._stopVoice(); window._resetLog();
     btn.textContent = 'Connecting…';
     try { const call = await vapi.start(cfg.vapiAssistantId); callId = call?.id; }
-    catch (e) { btn.textContent = '📞 Real call (Vapi)'; window._add('tool', '⚠ ' + (e.message || 'Could not start call')); }
+    catch (e) { btn.textContent = '📞 Real call (Vapi)'; toast(e.message || 'Could not start the call', 'error'); }
   };
   vapi.on('call-start', () => { active = true; btn.textContent = '⏹ Hang up'; poll = setInterval(showOrder, 1500); });
   vapi.on('call-end', () => { active = false; btn.textContent = '📞 Real call (Vapi)'; clearInterval(poll); showOrder(); window._add('tool', 'Call ended.'); });
   vapi.on('message', m => { if (m.type === 'transcript' && m.transcriptType === 'final') window._add(m.role === 'user' ? 'user' : 'tool', (m.role === 'user' ? '' : '🔊 ') + m.transcript); });
-  vapi.on('error', e => { const m = e?.errorMsg || e?.error?.message || e?.error?.msg || e?.message || (typeof e?.error === 'string' ? e.error : ''); if (!/ended|ejected/i.test(m)) window._add('tool', '⚠ ' + (m || 'The call had a problem. Please try again.')); });
+  vapi.on('error', e => { const m = e?.errorMsg || e?.error?.message || e?.error?.msg || e?.message || (typeof e?.error === 'string' ? e.error : ''); if (!/ended|ejected/i.test(m)) toast(m || 'The call had a problem. Please try again.', 'error'); });
 }
 </script>
 </body></html>

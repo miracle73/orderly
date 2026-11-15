@@ -56,6 +56,17 @@ const created = { emails: [], phoneIds: [] };
   await req('/api/auth/signup', { body: B });
   const tB = await verifyEmail(B.email);
   ok((await req('/api/me', { token: 'garbage' })).status === 401, 'bad token rejected');
+  // --- Passwords
+  ok((await req('/api/me/password', { token: tA, body: { currentPassword: 'wrong-one', newPassword: 'newpass123' } })).status === 400, 'change password rejects wrong current password');
+  ok((await req('/api/me/password', { token: tA, body: { currentPassword: A.password, newPassword: 'short' } })).status === 400, 'change password rejects short password');
+  ok((await req('/api/me/password', { token: tA, body: { currentPassword: A.password, newPassword: 'newpass123' } })).status === 200, 'change password');
+  ok((await req('/api/auth/login', { body: { email: A.email, password: 'newpass123' } })).status === 200, 'log in with the new password');
+  ok((await req('/api/auth/forgot', { body: { email: A.email } })).status === 200, 'forgot password request');
+  ok((await req('/api/auth/forgot', { body: { email: 'nobody-' + stamp + '@example.com' } })).status === 200, 'forgot password does not reveal unknown emails');
+  ok((await req('/api/auth/reset', { body: { token: 'not-real', password: 'whatever123' } })).status === 400, 'bad reset link rejected');
+  r = await req('/api/auth/reset', { body: { token: await plantToken('reset', A.email), password: A.password } });
+  ok(r.status === 200 && !!r.body.token, 'reset password with emailed link logs in');
+  ok((await req('/api/auth/login', { body: { email: A.email, password: A.password } })).status === 200, 'log in after reset');
   r = await req('/api/me', { token: tA });
   const meA = r.body;
   ok(r.status === 200 && meA.name === A.name, 'profile loads');
@@ -223,10 +234,14 @@ async function getDb() {
 }
 
 // Simulates clicking the emailed link: plant a known token, then call the real verify endpoint.
-async function verifyEmail(email) {
+async function plantToken(kind, email) {
   const token = crypto.randomBytes(16).toString('hex');
-  await (await getDb()).query('UPDATE businesses SET verify_token_hash = $1, verify_sent_at = now() WHERE email = lower($2)',
+  await (await getDb()).query(`UPDATE businesses SET ${kind}_token_hash = $1, ${kind}_sent_at = now() WHERE email = lower($2)`,
     [crypto.createHash('sha256').update(token).digest('hex'), email]);
+  return token;
+}
+async function verifyEmail(email) {
+  const token = await plantToken('verify', email);
   return (await req('/api/auth/verify', { body: { token } })).body.token;
 }
 

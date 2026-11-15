@@ -57,6 +57,11 @@
         <div id="phone-shared" hidden><p style="font-size:17px;margin:0 0 6px">Customers call <b id="shared-num"></b></p>
           <p class="muted" style="margin:0">and say <b id="shared-name"></b> or your code <b id="shared-code" style="color:var(--brand2);font-size:18px"></b>. Share this on your flyers, WhatsApp and Instagram.</p></div>
         <p class="muted">Voice agent: <span id="voice-status"></span> <button id="sync" style="margin-left:8px">Re-sync voice agent</button></p></div>
+      <div class="card"><h3>4. Account security</h3>
+        <p class="muted">Change your password. We'll email you to confirm the change.</p>
+        <form id="f-pw" class="row"><input name="currentPassword" type="password" placeholder="Current password" required autocomplete="current-password">
+          <input name="newPassword" type="password" placeholder="New password (8+ characters)" required minlength="8" autocomplete="new-password">
+          <button class="primary">Change password</button></form></div>
     </div>
   </section>
 </main>
@@ -71,7 +76,7 @@ document.querySelectorAll('nav [data-tab]').forEach(b => b.onclick = () => {
   document.querySelectorAll('main section').forEach(s => s.hidden = s.id !== tab);
   load();
 });
-const guard = fn => async e => { e?.preventDefault?.(); const btn = e?.submitter || e?.target; btn && (btn.disabled = true); try { await fn(e); } catch (err) { alert(err.message); } btn && (btn.disabled = false); };
+const guard = fn => async e => { e?.preventDefault?.(); const btn = e?.submitter || e?.target; btn && (btn.disabled = true); try { await fn(e); } catch (err) { toast(err.message, 'error'); } btn && (btn.disabled = false); };
 
 function renderMe() {
   $('#bizName').textContent = me.name; $('#in-name').value = me.name;
@@ -98,12 +103,13 @@ async function renderBanner() {
 }
 async function loadMe() { me = await api('/api/me'); renderMe(); }
 
-$('#f-name').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ name: e.target.name.value }) }); renderMe(); });
-$('#f-pay').onsubmit = guard(async e => { me = await api('/api/me/payout', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); renderMe(); });
+$('#f-name').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ name: e.target.name.value }) }); renderMe(); toast('Business name saved'); });
+$('#f-pay').onsubmit = guard(async e => { me = await api('/api/me/payout', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); renderMe(); toast(`Bank account saved: ${me.payout.accountName}`); });
 api('/api/banks').then(banks => { $('#banks').insertAdjacentHTML('beforeend', banks.map(b => `<option value="${esc(b.code)}">${esc(b.name)}</option>`).join('')); }).catch(() => {});
 $('#f-phone').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
 $('#f-twilio').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
-$('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); alert('Voice agent updated.'); });
+$('#f-pw').onsubmit = guard(async e => { await api('/api/me/password', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); toast('Password changed. We sent you a confirmation email.'); });
+$('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); toast('Voice agent updated'); });
 
 async function loadOrders() {
   const rows = await api('/api/me/orders');
@@ -129,13 +135,13 @@ async function loadMenu() {
     <td><input type="number" min="1" step="0.01" value="${m.priceKobo / 100}" data-price="${m.id}" style="width:110px"></td>
     <td><input type="checkbox" ${m.available ? 'checked' : ''} data-avail="${m.id}"></td>
     <td><button data-del="${m.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No items yet. Add your first one above.</td></tr>';
-  document.querySelectorAll('[data-price]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.price, { method: 'PATCH', body: JSON.stringify({ priceNaira: i.value }) }).catch(e => alert(e.message)));
+  document.querySelectorAll('[data-price]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.price, { method: 'PATCH', body: JSON.stringify({ priceNaira: i.value }) }).catch(e => toast(e.message, 'error')));
   document.querySelectorAll('[data-field]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.id, { method: 'PATCH', body: JSON.stringify({ [i.dataset.field]: i.value }) })
-    .then(() => { i.style.borderColor = 'var(--mint)'; setTimeout(() => i.style.borderColor = '', 1200); }).catch(e => { alert(e.message); loadMenu(); }));
+    .then(() => { i.style.borderColor = 'var(--mint)'; setTimeout(() => i.style.borderColor = '', 1200); }).catch(e => { toast(e.message, 'error'); loadMenu(); }));
   document.querySelectorAll('[data-avail]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.avail, { method: 'PATCH', body: JSON.stringify({ available: i.checked }) }));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Delete this item?')) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
 }
-$('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); loadMenu(); renderBanner(); });
+$('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); toast(`${e.target.name.value} added to your menu`); e.target.reset(); loadMenu(); renderBanner(); });
 async function loadTranscripts() {
   const rows = await api('/api/me/transcripts');
   $('#tx-list').innerHTML = rows.map(t => `<details class="card"><summary><b>${esc(t.customer_phone || (t.call_id.startsWith('web_') ? 'Web order' : 'Caller'))}</b>
@@ -145,6 +151,7 @@ async function loadTranscripts() {
 }
 const load = () => ({ orders: loadOrders, menu: loadMenu, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
 loadMe().then(load);
+const flash = store.get('orderly_flash'); if (flash) { toast(flash); store.set('orderly_flash', null); }
 setInterval(() => tab === 'orders' && load(), 5000);
 </script>
 </body></html>

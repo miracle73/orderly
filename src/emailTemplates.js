@@ -73,4 +73,23 @@ module.exports = {
       footnote: "If you didn't make this change, log in and update your bank account immediately, then contact us." }),
     text: `Payouts now go to ${accountName}, ${bankName} ****${last4}. If you didn't make this change, log in and update it immediately.`,
   }),
+
+  passwordReset: ({ businessName, link }) => ({
+    subject: 'Reset your Orderly password',
+    html: layout({ preheader: 'Use this link to choose a new password', title: 'Reset your password',
+      intro: `We got a request to reset the password for ${esc(businessName)}'s Orderly account.`, cta: { href: link, label: 'Choose a new password' },
+      footnote: "This link expires in 1 hour. If you didn't ask for this, ignore this email and your password stays the same." }),
+    text: `Reset your Orderly password: ${link}
+
+This link expires in 1 hour. If you didn't ask for this, ignore this email.`,
+  }),
+
+  passwordChanged: ({ businessName }) => ({
+    subject: 'Your Orderly password was changed',
+    html: layout({ preheader: 'Security notice for your account', title: 'Password changed',
+      intro: `The password for ${esc(businessName)}'s Orderly account was just changed.`,
+      cta: { href: `${app()}/login.html`, label: 'Log in' },
+      footnote: "If you didn't do this, reset your password right away with \"Forgot password?\" on the login page." }),
+    text: `The password for ${businessName}'s Orderly account was just changed. If this wasn't you, reset it now at ${app()}/login.html`,
+  }),
 };
