@@ -31,3 +31,20 @@ function toast(msg, type = 'success') {
   box.appendChild(t);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, type === 'error' ? 5500 : 3200);
 }
+
+// Custom confirm dialog (replaces the browser's confirm()). Resolves true/false.
+function confirmModal({ title, message = '', ok = 'Confirm', danger = false }) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-wrap';
+    wrap.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3></h3><p class="muted"></p>
+      <div class="row" style="justify-content:flex-end;margin-top:20px"><button type="button" data-v="0">Cancel</button><button type="button" data-v="1" class="${danger ? 'danger' : 'primary'}"></button></div></div>`;
+    wrap.querySelector('h3').textContent = title; wrap.querySelector('p').textContent = message; wrap.querySelector('[data-v="1"]').textContent = ok;
+    const done = v => { document.removeEventListener('keydown', onKey); wrap.remove(); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    wrap.onclick = e => { if (e.target === wrap) done(false); const v = e.target.dataset?.v; if (v) done(v === '1'); };
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+    wrap.querySelector('[data-v="1"]').focus();
+  });
+}

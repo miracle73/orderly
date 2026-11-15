@@ -139,7 +139,7 @@ async function loadMenu() {
   document.querySelectorAll('[data-field]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.id, { method: 'PATCH', body: JSON.stringify({ [i.dataset.field]: i.value }) })
     .then(() => { i.style.borderColor = 'var(--mint)'; setTimeout(() => i.style.borderColor = '', 1200); }).catch(e => { toast(e.message, 'error'); loadMenu(); }));
   document.querySelectorAll('[data-avail]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.avail, { method: 'PATCH', body: JSON.stringify({ available: i.checked }) }));
-  document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Delete this item?')) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (await confirmModal({ title: 'Delete this item?', message: 'Customers will no longer be able to order it. This cannot be undone.', ok: 'Delete', danger: true })) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
 }
 $('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); toast(`${e.target.name.value} added to your menu`); e.target.reset(); loadMenu(); renderBanner(); });
 async function loadTranscripts() {

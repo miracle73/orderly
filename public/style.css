@@ -108,3 +108,8 @@ details.card summary{cursor:pointer;list-style:none}details.card summary::-webki
 .toast.out{opacity:0;transform:translateY(-6px);transition:.3s}
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}}
 @media (max-width:600px){#toasts{left:16px;right:16px;top:12px;max-width:none}}
+/* Modal */
+.modal-wrap{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);animation:tin .2s ease-out}
+.modal{width:100%;max-width:400px;padding:24px;border-radius:20px;background:#141a16;border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.6)}
+.modal h3{margin:0 0 8px;font-size:21px}.modal p{margin:0;line-height:1.5}
+button.danger{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
