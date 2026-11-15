@@ -37,10 +37,12 @@
       <div class="card"><h3>1. Business</h3>
         <form id="f-name" class="row"><input name="name" id="in-name" required><button>Save name</button></form>
         <p class="muted">Customer ordering page (share it, or use it to test): <a id="orderLink2" target="_blank"></a></p></div>
-      <div class="card"><h3>2. Payments (Paystack) <span id="pay-status"></span></h3>
-        <p class="muted">Money goes straight to your own Paystack account. Paste your secret key from Paystack → Settings → API Keys &amp; Webhooks.</p>
-        <form id="f-pay" class="row"><input name="paystackSecretKey" type="password" placeholder="sk_live_… or sk_test_…" required style="flex:1;min-width:220px"><button class="primary">Connect Paystack</button></form>
-        <p class="muted">Then set this as your <b>Webhook URL</b> on the same Paystack page:</p><div class="code" id="webhook"></div></div>
+      <div class="card"><h3>2. Get paid <span id="pay-status"></span></h3>
+        <p class="muted">Customers pay by card, transfer or USSD. Your money is paid straight into this bank account.</p>
+        <p id="payout-now" hidden style="margin:0 0 12px"></p>
+        <form id="f-pay" class="row"><select name="bankCode" id="banks" required style="min-width:220px"><option value="">Choose your bank…</option></select>
+          <input name="accountNumber" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="10-digit account number" required style="width:200px">
+          <button class="primary">Verify &amp; save</button></form></div>
       <div class="card"><h3>3. Phone number <span id="phone-status"></span></h3>
         <div id="phone-none">
           <p class="muted">Get a number customers can call. Free Vapi numbers are US numbers; to use a Nigerian line, import a Twilio number.</p>
@@ -70,18 +72,20 @@ function renderMe() {
   $('#bizName').textContent = me.name; $('#in-name').value = me.name;
   const link = new URL('call.html?b=' + me.id, location.href).href;
   $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link; $('#orderLink2').textContent = link;
-  $('#webhook').textContent = me.paystackWebhookUrl;
-  $('#pay-status').innerHTML = me.paystackConnected ? '<span class="ok">✓ connected</span>' : '<span class="muted">not connected</span>';
+  $('#pay-status').innerHTML = me.payout ? '<span class="ok">✓ connected</span>' : '<span class="muted">not set up</span>';
+  $('#payout-now').hidden = !me.payout;
+  if (me.payout) $('#payout-now').innerHTML = `Paying out to <b>${esc(me.payout.accountName)}</b> · ${esc(me.payout.bankName)} ••••${esc(me.payout.accountLast4)}<br><span class="muted">To change it, enter a new account below.</span>`;
   $('#phone-status').innerHTML = me.phoneNumber ? '<span class="ok">✓ live</span>' : '';
   $('#phone-none').hidden = !!me.phoneNumber; $('#phone-has').hidden = !me.phoneNumber; $('#phone-num').textContent = me.phoneNumber || '';
   $('#voice-status').innerHTML = me.voiceReady ? '<span class="ok">ready</span>' : 'not set up';
-  const todo = [!me.paystackConnected && 'connect Paystack', !me.phoneNumber && 'get a phone number'].filter(Boolean);
+  const todo = [!me.payout && 'add your bank account',!me.phoneNumber && 'get a phone number'].filter(Boolean);
   $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.join(' and ')} in <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Setup</a>. Add your menu too.</div>` : '';
 }
 async function loadMe() { me = await api('/api/me'); renderMe(); }
 
 $('#f-name').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ name: e.target.name.value }) }); renderMe(); });
-$('#f-pay').onsubmit = guard(async e => { me = await api('/api/me', { method: 'PATCH', body: JSON.stringify({ paystackSecretKey: e.target.paystackSecretKey.value.trim() }) }); e.target.reset(); renderMe(); });
+$('#f-pay').onsubmit = guard(async e => { me = await api('/api/me/payout', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); renderMe(); });
+api('/api/banks').then(banks => { $('#banks').insertAdjacentHTML('beforeend', banks.map(b => `<option value="${esc(b.code)}">${esc(b.name)}</option>`).join('')); }).catch(() => {});
 $('#f-phone').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
 $('#f-twilio').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
 $('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); alert('Voice agent updated.'); });
@@ -105,11 +109,14 @@ async function loadOrders() {
 }
 async function loadMenu() {
   const rows = await api('/api/me/menu');
-  $('#menu-body').innerHTML = rows.map(m => `<tr><td>${esc(m.name)}</td><td class="muted">${esc(m.aliases.join(', '))}</td>
+  $('#menu-body').innerHTML = rows.map(m => `<tr><td><input value="${esc(m.name)}" data-field="name" data-id="${m.id}" style="width:100%;min-width:140px"></td>
+    <td><input value="${esc(m.aliases.join(', '))}" data-field="aliases" data-id="${m.id}" placeholder="e.g. jollof" style="width:100%;min-width:140px"></td>
     <td><input type="number" min="1" step="0.01" value="${m.priceKobo / 100}" data-price="${m.id}" style="width:110px"></td>
     <td><input type="checkbox" ${m.available ? 'checked' : ''} data-avail="${m.id}"></td>
     <td><button data-del="${m.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No items yet. Add your first one above.</td></tr>';
   document.querySelectorAll('[data-price]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.price, { method: 'PATCH', body: JSON.stringify({ priceNaira: i.value }) }).catch(e => alert(e.message)));
+  document.querySelectorAll('[data-field]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.id, { method: 'PATCH', body: JSON.stringify({ [i.dataset.field]: i.value }) })
+    .then(() => { i.style.borderColor = 'var(--mint)'; setTimeout(() => i.style.borderColor = '', 1200); }).catch(e => { alert(e.message); loadMenu(); }));
   document.querySelectorAll('[data-avail]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.avail, { method: 'PATCH', body: JSON.stringify({ available: i.checked }) }));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Delete this item?')) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
 }

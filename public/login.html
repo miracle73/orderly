@@ -34,7 +34,11 @@
       <input name="password" type="password" placeholder="Password (8+ characters)" required minlength="8" autocomplete="current-password">
       <button class="primary" id="submit">Log in</button>
       <div class="err" id="err"></div>
+      <button type="button" id="resend" hidden>Resend verification email</button>
     </form>
+    <div id="checkmail" hidden style="margin-top:22px" class="card"><h3 style="margin:0 0 8px">📬 Check your inbox</h3>
+      <p class="muted" style="margin:0 0 14px">We sent a verification link to <b id="sentTo"></b>. Click it to activate your account.</p>
+      <button type="button" id="resend2">Resend email</button></div>
   </div></div>
 </div>
 <script src="config.js"></script><script src="app.js"></script>
@@ -54,10 +58,19 @@ $('#t-login').onclick = () => setMode('login'); $('#t-signup').onclick = () => s
 $('#f').onsubmit = async e => {
   e.preventDefault(); $('#err').textContent = ''; $('#submit').disabled = true;
   try {
-    const { token } = await api('/api/auth/' + mode, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) });
-    store.set('orderly_token', token); location.href = 'dashboard.html';
-  } catch (err) { $('#err').textContent = err.message; }
+    const r = await api('/api/auth/' + mode, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) });
+    if (r.verifyRequired) {
+      $('#f').hidden = true; document.querySelector('.tabs').hidden = true; $('#checkmail').hidden = false; $('#sentTo').textContent = r.email;
+      $('#title').textContent = 'Almost there'; $('#sub').textContent = 'Verify your email to finish setting up.';
+    } else { store.set('orderly_token', r.token); location.href = 'dashboard.html'; }
+  } catch (err) { $('#err').textContent = err.message; $('#resend').hidden = !/verify/i.test(err.message); }
   $('#submit').disabled = false;
 };
+const resend = async btn => {
+  btn.disabled = true;
+  await api('/api/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email: $('[name=email]').value }) }).catch(() => {});
+  btn.textContent = 'Sent! Check your inbox'; setTimeout(() => { btn.disabled = false; btn.textContent = 'Resend email'; }, 60000);
+};
+$('#resend').onclick = () => resend($('#resend')); $('#resend2').onclick = () => resend($('#resend2'));
 </script>
 </body></html>

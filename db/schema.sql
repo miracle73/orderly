@@ -57,3 +57,14 @@ CREATE TABLE IF NOT EXISTS transcripts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS transcripts_business_idx ON transcripts (business_id, created_at DESC);
+
+-- v2: email verification + platform Paystack with per-business subaccounts (bank payouts)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS verify_token_hash TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS verify_sent_at TIMESTAMPTZ;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bank_code TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS bank_name TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS account_number TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS account_name TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS paystack_subaccount TEXT;
+CREATE INDEX IF NOT EXISTS businesses_verify_idx ON businesses (verify_token_hash);

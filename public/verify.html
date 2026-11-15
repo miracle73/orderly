@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify Email</title><link rel="stylesheet" href="style.css"></head>
+<body><main style="max-width:440px;text-align:center;padding-top:16vh">
+  <div class="logo" style="margin:0 auto 20px;width:54px;height:54px"><svg viewBox="0 0 24 24" style="width:26px;height:26px"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></div>
+  <h1 id="t">Verifying your email…</h1><p class="muted" id="m">One moment.</p>
+  <a class="btn primary" id="go" href="login.html" hidden>Back to log in</a>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+(async () => {
+  const token = new URLSearchParams(location.search).get('token');
+  try {
+    const r = await api('/api/auth/verify', { method: 'POST', body: JSON.stringify({ token }) });
+    store.set('orderly_token', r.token);
+    $('#t').textContent = 'Email verified 🎉'; $('#m').textContent = 'Taking you to your dashboard…';
+    setTimeout(() => location.href = 'dashboard.html', 1200);
+  } catch (e) { $('#t').textContent = 'Link not valid'; $('#m').textContent = e.message; $('#go').hidden = false; }
+})();
+</script></body></html>

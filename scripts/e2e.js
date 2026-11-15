@@ -38,7 +38,12 @@ const created = { emails: [], phoneIds: [] };
   const B = { email: `e2e-b-${stamp}@example.com`, password: 'password123', name: 'E2E Other' };
   created.emails.push(A.email, B.email);
   let r = await req('/api/auth/signup', { body: A });
-  ok(r.status === 200 && r.body.token, 'signup');
+  ok(r.status === 200 && r.body.verifyRequired && !r.body.token, 'signup asks for email verification (no session yet)');
+  r = await req('/api/auth/login', { body: { email: A.email, password: A.password } });
+  ok(r.status === 403 && r.body.verifyRequired, 'login blocked until email verified');
+  ok((await req('/api/auth/resend-verification', { body: { email: A.email } })).status === 200, 'resend verification');
+  ok((await req('/api/auth/verify', { body: { token: 'not-a-real-token' } })).status === 400, 'bad verification link rejected');
+  ok(!!(await verifyEmail(A.email)), 'verification link logs the business in');
   r = await req('/api/auth/signup', { body: A });
   ok(r.status === 409, 'duplicate signup rejected');
   r = await req('/api/auth/signup', { body: { ...A, email: 'bad', password: '1' } });
@@ -48,7 +53,8 @@ const created = { emails: [], phoneIds: [] };
   r = await req('/api/auth/login', { body: { email: A.email.toUpperCase(), password: A.password } });
   ok(r.status === 200, 'login (email case-insensitive)');
   const tA = r.body.token;
-  const tB = (await req('/api/auth/signup', { body: B })).body.token;
+  await req('/api/auth/signup', { body: B });
+  const tB = await verifyEmail(B.email);
   ok((await req('/api/me', { token: 'garbage' })).status === 401, 'bad token rejected');
   r = await req('/api/me', { token: tA });
   const meA = r.body;
@@ -62,10 +68,12 @@ const created = { emails: [], phoneIds: [] };
   // --- Business settings
   r = await req('/api/me', { method: 'PATCH', token: tA, body: { name: 'E2E Kitchen Renamed' } });
   ok(r.body.name === 'E2E Kitchen Renamed', 'rename business');
-  r = await req('/api/me', { method: 'PATCH', token: tA, body: { paystackSecretKey: 'sk_test_definitelynotreal123' } });
-  ok(r.status === 400, 'invalid Paystack key rejected');
-  r = await req('/api/me', { method: 'PATCH', token: tA, body: { paystackSecretKey: env.PAYSTACK_SECRET_KEY } });
-  ok(r.body.paystackConnected === true, 'connect real Paystack test key');
+  const banks = (await req('/api/banks')).body;
+  ok(Array.isArray(banks) && banks.length > 20, 'bank list loads', `${banks.length} banks`);
+  ok((await req('/api/me/payout', { token: tA, body: { bankCode: '057', accountNumber: '123' } })).status === 400, 'short account number rejected');
+  ok((await req('/api/me/payout', { token: tA, body: { bankCode: '999999', accountNumber: '0001234567' } })).status === 400, 'unknown bank rejected');
+  r = await req('/api/me/payout', { token: tA, body: { bankCode: '057', accountNumber: '0000000000' } });
+  ok(r.status === 200 && r.body.payout?.accountName, 'bank account verified + Paystack subaccount created', r.body.payout ? `${r.body.payout.accountName} · ${r.body.payout.bankName}` : JSON.stringify(r.body));
 
   // --- Menu
   for (const [name, priceNaira, aliases] of [['Jollof Rice', 2500, 'jollof'], ['Chicken', 1500, ''], ['Coke', 500, 'coca cola'], ['Suya', 2000, '']]) {
@@ -83,6 +91,11 @@ const created = { emails: [], phoneIds: [] };
   ok(menu.find(m => m.name === 'Chicken')?.priceKobo === 180000, 'edit price');
   ok(menu.find(m => m.name === 'Suya')?.available === false, 'mark item unavailable');
   ok(!menu.find(m => m.name === 'Coke'), 'delete item');
+  await req(`/api/me/menu/${id('Jollof Rice')}`, { method: 'PATCH', token: tA, body: { name: 'Party Jollof', aliases: 'jollof, jollof rice' } });
+  menu = (await req('/api/me/menu', { token: tA })).body;
+  ok(menu.some(m => m.name === 'Party Jollof' && m.aliases.includes('jollof rice')), 'rename item + edit other names');
+  ok((await req(`/api/me/menu/${menu.find(m => m.name === 'Party Jollof').id}`, { method: 'PATCH', token: tA, body: { name: 'Chicken' } })).status === 400, 'rename to duplicate name rejected');
+  await req(`/api/me/menu/${menu.find(m => m.name === 'Party Jollof').id}`, { method: 'PATCH', token: tA, body: { name: 'Jollof Rice' } });
 
   // --- Isolation
   await req(`/api/me/menu/${id('Chicken')}`, { method: 'PATCH', token: tB, body: { priceNaira: 1 } });
@@ -169,8 +182,11 @@ const created = { emails: [], phoneIds: [] };
 
   // --- Phone number (free Vapi number)
   r = await req('/api/me/phone-number', { token: tA, body: {} });
-  ok(r.status === 200 && r.body.phoneNumber, 'get a phone number', r.body.phoneNumber || JSON.stringify(r.body));
-  ok((await req('/api/me/phone-number', { token: tA, body: {} })).status === 409, 'second number blocked');
+  if (/maximum number of free phone numbers/.test(r.body.error || '')) console.log('⏭️  get a phone number — skipped: Vapi free-number limit used by a real business');
+  else {
+    ok(r.status === 200 && r.body.phoneNumber, 'get a phone number', r.body.phoneNumber || JSON.stringify(r.body));
+    ok((await req('/api/me/phone-number', { token: tA, body: {} })).status === 409, 'second number blocked');
+  }
 
   console.log(`\nPayment link for a manual test payment (Paystack test card): ${(await req(`/api/order/${webCall}`)).body.paymentUrl}`);
   console.log(`\n${pass} passed, ${fail} failed`);
@@ -178,12 +194,26 @@ const created = { emails: [], phoneIds: [] };
   await cleanup();
 })().catch(async e => { console.error('CRASH', e); await cleanup(); process.exit(1); });
 
-async function cleanup() {
-  // Resolve via public DNS (some local resolvers drop AWS hostnames); SNI keeps Neon routing intact.
+// Resolve via public DNS (some local resolvers drop AWS hostnames); SNI keeps Neon routing intact.
+let dbPool;
+async function getDb() {
+  if (dbPool) return dbPool;
   const u = new URL(env.PROD_DATABASE_URL);
   const resolver = new (require('dns').promises.Resolver)(); resolver.setServers(['8.8.8.8', '1.1.1.1']);
   const [ip] = await resolver.resolve4(u.hostname);
-  const db = new Pool({ host: ip, port: +u.port || 5432, user: decodeURIComponent(u.username), password: decodeURIComponent(u.password), database: u.pathname.slice(1), ssl: { servername: u.hostname } });
+  return (dbPool = new Pool({ host: ip, port: +u.port || 5432, user: decodeURIComponent(u.username), password: decodeURIComponent(u.password), database: u.pathname.slice(1), ssl: { servername: u.hostname } }));
+}
+
+// Simulates clicking the emailed link: plant a known token, then call the real verify endpoint.
+async function verifyEmail(email) {
+  const token = crypto.randomBytes(16).toString('hex');
+  await (await getDb()).query('UPDATE businesses SET verify_token_hash = $1, verify_sent_at = now() WHERE email = lower($2)',
+    [crypto.createHash('sha256').update(token).digest('hex'), email]);
+  return (await req('/api/auth/verify', { body: { token } })).body.token;
+}
+
+async function cleanup() {
+  const db = await getDb();
   const { rows } = await db.query("DELETE FROM businesses WHERE email LIKE 'e2e-%@example.com' RETURNING vapi_assistant_id, vapi_phone_number_id");
   await db.end();
   const del = p => fetch(`https://api.vapi.ai${p}`, { method: 'DELETE', headers: { Authorization: `Bearer ${env.VAPI_API_KEY}` } });

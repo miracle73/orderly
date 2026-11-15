@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const store = require('./store');
 const paystack = require('./paystack');
 const sms = require('./sms');
-const { decrypt } = require('./auth');
 const { summarize } = require('./orderMachine');
 
 const naira = k => `₦${(k / 100).toLocaleString('en-NG')}`;
@@ -28,8 +27,6 @@ const handlers = {
   async change_after_link(_, ctx) { return reply(await mutate(ctx, { type: 'cancel_payment' })); },
 
   async send_payment_link(_, ctx) {
-    const secret = decrypt(ctx.business.paystack_secret_enc);
-    if (!secret) return 'This business has not set up online payment. Tell the caller their order is confirmed and they can pay on pickup or delivery.';
     const current = await store.getOrder(ctx.callId);
     if (current.status === 'awaiting_payment') return `Payment link was already sent for ${naira(current.totalKobo)}.`;
     const reference = `ord_${crypto.randomBytes(8).toString('hex')}`;
@@ -37,9 +34,9 @@ const handlers = {
     if (!r.ok) return reply(r);
     try {
       const digits = String(ctx.phone || '').replace(/\D/g, '') || `guest${Date.now()}`;
-      const tx = await paystack.initialize(secret, {
+      const tx = await paystack.initialize({
         email: `${digits}@${process.env.CUSTOMER_EMAIL_DOMAIN || 'orderly.ng'}`,
-        amountKobo: r.order.totalKobo, reference,
+        amountKobo: r.order.totalKobo, reference, subaccount: ctx.business.paystack_subaccount || undefined,
         metadata: { businessId: ctx.businessId, callId: ctx.callId, orderId: r.orderId },
       });
       await store.setPaymentUrl(ctx.callId, tx.authorization_url);

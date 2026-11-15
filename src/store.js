@@ -19,7 +19,12 @@ async function getBusiness(id) {
   const { rows } = await pool.query('SELECT * FROM businesses WHERE id = $1', [id]);
   return rows[0] || null;
 }
-const BUSINESS_FIELDS = ['name', 'paystack_secret_enc', 'vapi_assistant_id', 'vapi_phone_number_id', 'phone_number'];
+const BUSINESS_FIELDS = ['name', 'vapi_assistant_id', 'vapi_phone_number_id', 'phone_number', 'email_verified',
+  'verify_token_hash', 'verify_sent_at', 'bank_code', 'bank_name', 'account_number', 'account_name', 'paystack_subaccount'];
+async function getBusinessByVerifyHash(hash) {
+  const { rows } = await pool.query('SELECT * FROM businesses WHERE verify_token_hash = $1', [hash]);
+  return rows[0] || null;
+}
 async function updateBusiness(id, fields) {
   const keys = Object.keys(fields).filter(k => BUSINESS_FIELDS.includes(k));
   if (!keys.length) return;
@@ -38,11 +43,13 @@ async function addMenuItem(businessId, { name, aliases = [], priceKobo }) {
   await pool.query('INSERT INTO menu_items (business_id, name, aliases, price_kobo) VALUES ($1,$2,$3,$4)',
     [businessId, name.trim(), aliases, priceKobo]);
 }
-async function updateMenuItem(businessId, id, { priceKobo, available }) {
-  if (priceKobo !== undefined && (!Number.isInteger(priceKobo) || priceKobo <= 0)) throw new Error('Bad price');
+async function updateMenuItem(businessId, id, { name, aliases, priceKobo, available }) {
+  if (priceKobo !== undefined && (!Number.isInteger(priceKobo) || priceKobo <= 0)) throw new Error('Price must be more than 0');
+  if (name !== undefined && !String(name).trim()) throw new Error('Name cannot be empty');
   await pool.query(
-    `UPDATE menu_items SET price_kobo = COALESCE($1, price_kobo), available = COALESCE($2, available)
-     WHERE id = $3 AND business_id = $4`, [priceKobo ?? null, available ?? null, id, businessId]);
+    `UPDATE menu_items SET price_kobo = COALESCE($1, price_kobo), available = COALESCE($2, available),
+     name = COALESCE($3, name), aliases = COALESCE($4, aliases) WHERE id = $5 AND business_id = $6`,
+    [priceKobo ?? null, available ?? null, name === undefined ? null : String(name).trim(), aliases ?? null, id, businessId]);
 }
 async function deleteMenuItem(businessId, id) {
   await pool.query('DELETE FROM menu_items WHERE id = $1 AND business_id = $2', [id, businessId]);
@@ -73,7 +80,8 @@ async function mutate({ businessId, callId, paymentRef, phone }, action) {
     let row;
     if (paymentRef) {
       ({ rows: [row] } = await client.query(
-        'SELECT * FROM orders WHERE payment_ref = $1 AND business_id = $2 FOR UPDATE', [paymentRef, businessId]));
+        'SELECT * FROM orders WHERE payment_ref = $1 FOR UPDATE', [paymentRef]));
+      if (row) businessId = row.business_id; // one platform webhook serves every business
       if (!row) throw new Error('Unknown payment reference');
     } else {
       await client.query(
@@ -130,7 +138,7 @@ async function listTranscripts(businessId) {
 }
 
 module.exports = {
-  pool, createBusiness, getBusinessByEmail, getBusiness, updateBusiness,
+  pool, createBusiness, getBusinessByEmail, getBusiness, getBusinessByVerifyHash, updateBusiness,
   getMenu, addMenuItem, updateMenuItem, deleteMenuItem,
   getOrder, getOrderView, setPaymentUrl, mutate, listOrders, setFulfilment,
   saveTranscript, listTranscripts,

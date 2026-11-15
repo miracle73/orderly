@@ -7,6 +7,8 @@ const sms = require('./sms');
 const llm = require('./llm');
 const vapi = require('./vapi');
 const auth = require('./auth');
+const email = require('./email');
+const crypto = require('crypto');
 const { runTool } = require('./tools');
 const { runAgent } = require('./agent');
 
@@ -42,9 +44,19 @@ async function businessOr404(id) {
 
 const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
-  paystackConnected: !!b.paystack_secret_enc, voiceReady: !!b.vapi_assistant_id,
-  paystackWebhookUrl: `${baseUrl(req)}/paystack/webhook/${b.id}`,
+  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified,
+  payout: b.paystack_subaccount ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
+
+// ---------- Email verification ----------
+const VERIFY_TTL_MS = 24 * 3600 * 1000;
+async function sendVerify(b, req) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  await store.updateBusiness(b.id, { verify_token_hash: sha256(token), verify_sent_at: new Date() });
+  const origin = process.env.FRONTEND_URL || req.get('origin') || baseUrl(req);
+  await email.sendVerification(b.email, b.name, `${origin}/verify.html?token=${token}`);
+}
+const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
@@ -55,19 +67,40 @@ app.post('/api/auth/signup', wrap(async (req, res) => {
     throw httpError(400, 'Business name, valid email and a password of 8+ characters are required');
   }
   if (await store.getBusinessByEmail(email)) throw httpError(409, 'An account with this email already exists');
-  let b = await store.createBusiness({ name: name.trim(), email, passwordHash: auth.hashPassword(password) });
+  const b = await store.createBusiness({ name: name.trim(), email, passwordHash: auth.hashPassword(password) });
   try {
     await store.updateBusiness(b.id, { vapi_assistant_id: await vapi.syncAssistant(b, baseUrl(req)) });
   } catch (e) { console.error('assistant create failed', e.message); }
-  res.json({ token: auth.signToken({ bid: b.id }) });
+  try { await sendVerify(b, req); } catch (e) { console.error('verification email failed', e.message); }
+  res.json({ verifyRequired: true, email: b.email });
 }));
 
 app.post('/api/auth/login', wrap(async (req, res) => {
   const { email, password } = req.body || {};
   const b = await store.getBusinessByEmail(email || '');
   if (!b || !auth.checkPassword(String(password || ''), b.password_hash)) throw httpError(401, 'Wrong email or password');
+  if (!b.email_verified) return res.status(403).json({ error: 'Please verify your email first. Check your inbox.', verifyRequired: true });
   res.json({ token: auth.signToken({ bid: b.id }) });
 }));
+
+app.post('/api/auth/verify', wrap(async (req, res) => {
+  const token = String(req.body?.token || '');
+  const b = token && await store.getBusinessByVerifyHash(sha256(token));
+  if (!b || Date.now() - new Date(b.verify_sent_at).getTime() > VERIFY_TTL_MS) throw httpError(400, 'This link is invalid or has expired. Request a new one.');
+  await store.updateBusiness(b.id, { email_verified: true, verify_token_hash: null });
+  res.json({ token: auth.signToken({ bid: b.id }) });
+}));
+
+// Always answers OK so it can't be used to discover which emails have accounts.
+app.post('/api/auth/resend-verification', wrap(async (req, res) => {
+  const b = await store.getBusinessByEmail(String(req.body?.email || ''));
+  if (b && !b.email_verified && (!b.verify_sent_at || Date.now() - new Date(b.verify_sent_at).getTime() > 60000)) {
+    try { await sendVerify(b, req); } catch (e) { console.error('verification email failed', e.message); }
+  }
+  res.json({ ok: true });
+}));
+
+app.get('/api/banks', wrap(async (_req, res) => res.json(await paystack.listBanks())));
 
 // ---------- Business (logged in) ----------
 const me = express.Router();
@@ -76,21 +109,34 @@ me.use(auth.requireAuth);
 me.get('/', wrap(async (req, res) => res.json(profile(await businessOr404(req.businessId), req))));
 
 me.patch('/', wrap(async (req, res) => {
-  const { name, paystackSecretKey } = req.body || {};
+  const { name } = req.body || {};
   const fields = {};
   if (name?.trim()) fields.name = name.trim();
-  if (paystackSecretKey) {
-    if (!/^sk_(test|live)_\w+$/.test(paystackSecretKey)) throw httpError(400, 'That does not look like a Paystack secret key');
-    try { await paystack.checkKey(paystackSecretKey); } catch { throw httpError(400, 'Paystack rejected this key'); }
-    fields.paystack_secret_enc = auth.encrypt(paystackSecretKey);
-  }
   await store.updateBusiness(req.businessId, fields);
   const b = await businessOr404(req.businessId);
   if (fields.name) await vapi.syncAssistant(b, baseUrl(req)).catch(e => console.error(e.message));
   res.json(profile(b, req));
 }));
 
-me.post('/voice/sync', wrap(async (req, res) => {
+// Payout bank account: verified with Paystack, then saved as this business's subaccount.
+me.post('/payout', wrap(async (req, res) => {
+  const { bankCode, accountNumber } = req.body || {};
+  if (!/^\d{10}$/.test(String(accountNumber || ''))) throw httpError(400, 'Account number must be 10 digits');
+  const bank = (await paystack.listBanks()).find(x => x.code === bankCode);
+  if (!bank) throw httpError(400, 'Choose your bank');
+  let b = await businessOr404(req.businessId);
+  try {
+    const { account_name } = await paystack.resolveAccount(accountNumber, bankCode);
+    const code = await paystack.saveSubaccount(b.paystack_subaccount, { businessName: b.name, bankCode, accountNumber });
+    await store.updateBusiness(b.id, { bank_code: bankCode, bank_name: bank.name, account_number: accountNumber, account_name, paystack_subaccount: code });
+  } catch (e) {
+    if (e.paystack) throw httpError(400, `Couldn't verify that account: ${e.message}`);
+    throw e;
+  }
+  res.json(profile(await businessOr404(b.id), req));
+}));
+
+me.post('/voice/sync',wrap(async (req, res) => {
   const b = await businessOr404(req.businessId);
   try { await store.updateBusiness(b.id, { vapi_assistant_id: await vapi.syncAssistant(b, baseUrl(req)) }); }
   catch (e) { throw httpError(502, e.message); }
@@ -129,10 +175,13 @@ me.post('/menu', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 me.patch('/menu/:id', wrap(async (req, res) => {
-  const { priceNaira, available } = req.body || {};
+  const { name, aliases, priceNaira, available } = req.body || {};
   try {
-    await store.updateMenuItem(req.businessId, +req.params.id, { priceKobo: priceNaira !== undefined ? kobo(priceNaira) : undefined, available });
-  } catch (e) { throw httpError(400, e.message); }
+    await store.updateMenuItem(req.businessId, +req.params.id, {
+      name, available, priceKobo: priceNaira !== undefined ? kobo(priceNaira) : undefined,
+      aliases: aliases === undefined ? undefined : String(aliases).split(',').map(s => s.trim()).filter(Boolean),
+    });
+  } catch (e) { throw httpError(400, e.code === '23505' ? 'Another item already has that name' : e.message); }
   res.json({ ok: true });
 }));
 me.delete('/menu/:id', wrap(async (req, res) => { await store.deleteMenuItem(req.businessId, +req.params.id); res.json({ ok: true }); }));
@@ -204,16 +253,18 @@ app.post('/vapi/:businessId', wrap(async (req, res) => {
 
 // ---------- Payments: each business sets this URL as the webhook in its own Paystack dashboard ----------
 // Work is done before responding because Lambda freezes once the response is sent.
-app.post('/paystack/webhook/:businessId', wrap(async (req, res) => {
-  const b = await businessOr404(req.params.businessId);
-  const secret = auth.decrypt(b.paystack_secret_enc);
-  if (!secret || !paystack.validSignature(secret, req.rawBody, req.get('x-paystack-signature'))) return res.sendStatus(401);
+// One platform webhook for every business: set once in the platform Paystack dashboard.
+app.post(['/paystack/webhook', '/paystack/webhook/:businessId'], wrap(async (req, res) => {
+  if (!paystack.validSignature(req.rawBody, req.get('x-paystack-signature'))) return res.sendStatus(401);
   const { event, data } = req.body;
   if (event === 'charge.success') {
-    const tx = await paystack.verify(secret, data.reference);
+    const tx = await paystack.verify(data.reference);
     if (tx.status === 'success') {
-      const r = await store.mutate({ businessId: b.id, paymentRef: tx.reference },
-        { type: 'payment_success', reference: tx.reference, amountKobo: tx.amount });
+      let r;
+      try {
+        r = await store.mutate({ paymentRef: tx.reference }, { type: 'payment_success', reference: tx.reference, amountKobo: tx.amount });
+      } catch (e) { if (e.message === 'Unknown payment reference') return res.sendStatus(200); throw e; }
+      const b = await store.getBusiness((await store.pool.query('SELECT business_id FROM orders WHERE id=$1', [r.orderId])).rows[0].business_id);
       if (r.ok && r.phone) await sms.send(r.phone, `${b.name}: payment received. Order #${r.orderId} is being prepared. Thank you!`).catch(console.error);
       if (!r.ok) console.warn('payment rejected by state machine', tx.reference, r.error);
     }
