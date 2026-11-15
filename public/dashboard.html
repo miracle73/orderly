@@ -51,6 +51,8 @@
             <form id="f-twilio" class="row" style="margin-top:8px"><input name="twilioNumber" placeholder="+234…" required><input name="twilioAccountSid" placeholder="Twilio Account SID" required><input name="twilioAuthToken" type="password" placeholder="Twilio Auth Token" required><button>Import number</button></form></details>
         </div>
         <p id="phone-has" hidden>Customers call <b id="phone-num"></b> and Orderly answers.</p>
+        <div id="phone-shared" hidden><p style="font-size:17px;margin:0 0 6px">Customers call <b id="shared-num"></b></p>
+          <p class="muted" style="margin:0">and say <b id="shared-name"></b> or your code <b id="shared-code" style="color:var(--brand2);font-size:18px"></b>. Share this on your flyers, WhatsApp and Instagram.</p></div>
         <p class="muted">Voice agent: <span id="voice-status"></span> <button id="sync" style="margin-left:8px">Re-sync voice agent</button></p></div>
     </div>
   </section>
@@ -76,9 +78,12 @@ function renderMe() {
   $('#payout-now').hidden = !me.payout;
   if (me.payout) $('#payout-now').innerHTML = `Paying out to <b>${esc(me.payout.accountName)}</b> · ${esc(me.payout.bankName)} ••••${esc(me.payout.accountLast4)}<br><span class="muted">To change it, enter a new account below.</span>`;
   $('#phone-status').innerHTML = me.phoneNumber ? '<span class="ok">✓ live</span>' : '';
-  $('#phone-none').hidden = !!me.phoneNumber; $('#phone-has').hidden = !me.phoneNumber; $('#phone-num').textContent = me.phoneNumber || '';
+  const shared = !me.phoneNumber && me.sharedNumber;
+  $('#phone-none').hidden = !!me.phoneNumber || !!shared; $('#phone-has').hidden = !me.phoneNumber; $('#phone-num').textContent = me.phoneNumber || '';
+  $('#phone-shared').hidden = !shared;
+  if (shared) { $('#shared-num').textContent = me.sharedNumber; $('#shared-name').textContent = `“${me.name}”`; $('#shared-code').textContent = me.shortCode; $('#phone-status').innerHTML = '<span class="ok">✓ live</span>'; }
   $('#voice-status').innerHTML = me.voiceReady ? '<span class="ok">ready</span>' : 'not set up';
-  const todo = [!me.payout && 'add your bank account',!me.phoneNumber && 'get a phone number'].filter(Boolean);
+  const todo = [!me.payout && 'add your bank account',!me.phoneNumber && !me.sharedNumber && 'get a phone number'].filter(Boolean);
   $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.join(' and ')} in <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Setup</a>. Add your menu too.</div>` : '';
 }
 async function loadMe() { me = await api('/api/me'); renderMe(); }

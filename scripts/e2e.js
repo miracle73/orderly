@@ -164,6 +164,24 @@ const created = { emails: [], phoneIds: [] };
   ok(view.items?.[0]?.name === 'Jollof Rice', 'voice order saved for the call');
   ok((await req(`/llm/wrong-secret/${meA.id}/chat/completions`, { body: { messages: [] } })).status === 401, 'voice endpoint rejects wrong secret');
 
+  // --- Shared phone line: caller picks the business by code, then orders
+  const code = (await req('/api/me', { token: tA })).body.shortCode;
+  ok(/^\d{4}$/.test(code || ''), 'business has a 4-digit code', code);
+  const sharedCall = `e2e-shared-${stamp}`, hist = [];
+  const shared = async content => {
+    hist.push({ role: 'user', content });
+    const res = await req(`/llm/${env.VAPI_SECRET}/shared/chat/completions`, { body: { stream: true, call: { id: sharedCall }, messages: hist } });
+    const text = String(res.body).split('\n').filter(l => l.startsWith('data: {')).map(l => JSON.parse(l.slice(6)).choices[0].delta.content || '').join('');
+    hist.push({ role: 'assistant', content: text });
+    console.log(`   ☎️  ${content}\n   🔊 ${text}`);
+    return text;
+  };
+  const t1 = await shared(`I want to order from business code ${code.split('').join(' ')}`);
+  ok(t1.includes('E2E Kitchen'), 'shared line connects caller to the right business by code');
+  await shared('One jollof rice please');
+  view = (await req(`/api/order/${sharedCall}`)).body;
+  ok(view.items?.[0]?.name === 'Jollof Rice', 'order on shared line saved to that business');
+
   // --- End-of-call report → transcripts
   r = await req(`/vapi/${meA.id}`, { headers: { 'x-vapi-secret': env.VAPI_SECRET }, body: { message: { type: 'end-of-call-report', call: { id: callId, customer: { number: '+2348000000000' } }, endedReason: 'customer-ended-call', artifact: { transcript: 'AI: Hello\nUser: One jollof', messages: [] } } } });
   ok(r.status === 200, 'end-of-call report accepted');
@@ -174,7 +192,7 @@ const created = { emails: [], phoneIds: [] };
 
   // --- Orders dashboard
   const orders = (await req('/api/me/orders', { token: tA })).body;
-  ok(orders.length === 2, 'dashboard lists both orders');
+  ok(orders.length === 3, 'dashboard lists all 3 orders (web, phone, shared line)');
   r = await req(`/api/me/orders/${orders[0].id}`, { method: 'PATCH', token: tA, body: { fulfilment: 'preparing' } });
   ok(r.status === 200, 'update kitchen status');
   ok((await req(`/api/me/orders/${orders[0].id}`, { method: 'PATCH', token: tA, body: { fulfilment: 'hacked' } })).status === 400, 'bad kitchen status rejected');

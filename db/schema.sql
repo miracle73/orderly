@@ -68,3 +68,12 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS account_number TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS account_name TEXT;
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS paystack_subaccount TEXT;
 CREATE INDEX IF NOT EXISTS businesses_verify_idx ON businesses (verify_token_hash);
+
+-- v3: one shared phone line for all businesses. Callers say a business name or its 4-digit code.
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS short_code TEXT UNIQUE;
+UPDATE businesses SET short_code = (1000 + floor(random() * 9000))::int::text WHERE short_code IS NULL;
+CREATE TABLE IF NOT EXISTS call_routes (
+  call_id TEXT PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

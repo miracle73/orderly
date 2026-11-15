@@ -10,7 +10,7 @@ const auth = require('./auth');
 const email = require('./email');
 const crypto = require('crypto');
 const { runTool } = require('./tools');
-const { runAgent } = require('./agent');
+const { runAgent, runRouter } = require('./agent');
 
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -44,7 +44,8 @@ async function businessOr404(id) {
 
 const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
-  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified,
+  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code,
+  sharedNumber: process.env.SHARED_PHONE_NUMBER || null,
   payout: b.paystack_subaccount ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
 
@@ -219,13 +220,29 @@ app.get('/api/order/:callId', wrap(async (req, res) => res.json(await store.getO
 // Secret + business id are path segments because Vapi appends /chat/completions to the configured URL.
 app.post('/llm/:key/:businessId/chat/completions', wrap(async (req, res) => {
   if (req.params.key !== process.env.VAPI_SECRET) return res.sendStatus(401);
-  const business = await businessOr404(req.params.businessId);
   const { messages = [], call = {} } = req.body;
-  const ctx = { businessId: business.id, business, callId: call.id || `unknown_${Date.now()}`, phone: call.customer?.number, channel: 'phone' };
+  const callId = call.id || `unknown_${Date.now()}`;
+  const base = { callId, phone: call.customer?.number, channel: 'phone' };
 
   let reply;
-  try { ({ reply } = await runAgent(messages, ctx, agentDeps)); }
-  catch (e) { console.error('agent error', e); reply = 'Sorry, I had a small problem. Could you say that again?'; }
+  try {
+    // "shared" = the one phone number all businesses share; route the call once we know which business.
+    const routed = req.params.businessId === 'shared' ? await store.getRoute(callId) : req.params.businessId;
+    if (routed) {
+      const business = await businessOr404(routed);
+      ({ reply } = await runAgent(messages, { ...base, businessId: business.id, business }, agentDeps));
+    } else {
+      ({ reply } = await runRouter(messages, base, {
+        llm: llm.chat, findBusinesses: store.findBusinesses,
+        connect: async found => {
+          await store.setRoute(callId, found.id);
+          const business = await store.getBusiness(found.id);
+          const r = await runAgent(messages, { ...base, businessId: business.id, business }, agentDeps);
+          return { reply: `You're through to ${business.name}. ${r.reply}` };
+        },
+      }));
+    }
+  } catch (e) { console.error('agent error', e); reply = 'Sorry, I had a small problem. Could you say that again?'; }
 
   const id = `chatcmpl-${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
@@ -240,8 +257,10 @@ app.post('/llm/:key/:businessId/chat/completions', wrap(async (req, res) => {
 // End-of-call report -> transcripts for QA.
 app.post('/vapi/:businessId', wrap(async (req, res) => {
   if (req.get('x-vapi-secret') !== process.env.VAPI_SECRET) return res.sendStatus(401);
-  const b = await businessOr404(req.params.businessId);
   const msg = req.body?.message || {};
+  const bid = req.params.businessId === 'shared' ? await store.getRoute(msg.call?.id || '') : req.params.businessId;
+  if (!bid) return res.json({}); // caller hung up before choosing a business
+  const b = await businessOr404(bid);
   if (msg.type === 'end-of-call-report' && msg.call?.id) {
     await store.saveTranscript({
       businessId: b.id, callId: msg.call.id, phone: msg.call.customer?.number,

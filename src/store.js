@@ -6,9 +6,34 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: process
 
 // ---------- Businesses ----------
 async function createBusiness({ name, email, passwordHash }) {
+  for (let i = 0; ; i++) {
+    const code = String(1000 + Math.floor(Math.random() * 9000));
+    try {
+      const { rows } = await pool.query(
+        'INSERT INTO businesses (name, email, password_hash, short_code) VALUES ($1, lower($2), $3, $4) RETURNING *', [name, email, passwordHash, code]);
+      return rows[0];
+    } catch (e) { if (e.constraint !== 'businesses_short_code_key' || i > 20) throw e; }
+  }
+}
+
+// ---------- Shared phone line routing ----------
+async function findBusinesses(query) {
+  const q = String(query || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').trim();
+  const digits = q.replace(/\D/g, '');
+  const words = q.split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'kitchen', 'restaurant', 'foods', 'food'].includes(w));
   const { rows } = await pool.query(
-    'INSERT INTO businesses (name, email, password_hash) VALUES ($1, lower($2), $3) RETURNING *', [name, email, passwordHash]);
-  return rows[0];
+    `SELECT id, name, short_code FROM businesses WHERE email_verified AND (
+       short_code = $1 OR lower(name) = $2 OR lower(name) LIKE '%' || $2 || '%' OR lower(name) LIKE ANY($3))
+     ORDER BY (short_code = $1) DESC, (lower(name) = $2) DESC LIMIT 5`,
+    [digits.length === 4 ? digits : '-', q || '-', words.length ? words.map(w => `%${w}%`) : ['-']]);
+  return rows;
+}
+async function getRoute(callId) {
+  const { rows } = await pool.query('SELECT business_id FROM call_routes WHERE call_id = $1', [callId]);
+  return rows[0]?.business_id || null;
+}
+async function setRoute(callId, businessId) {
+  await pool.query('INSERT INTO call_routes (call_id, business_id) VALUES ($1, $2) ON CONFLICT (call_id) DO UPDATE SET business_id = $2', [callId, businessId]);
 }
 async function getBusinessByEmail(email) {
   const { rows } = await pool.query('SELECT * FROM businesses WHERE email = lower($1)', [email]);
@@ -138,7 +163,7 @@ async function listTranscripts(businessId) {
 }
 
 module.exports = {
-  pool, createBusiness, getBusinessByEmail, getBusiness, getBusinessByVerifyHash, updateBusiness,
+  pool, createBusiness, findBusinesses, getRoute, setRoute, getBusinessByEmail, getBusiness, getBusinessByVerifyHash, updateBusiness,
   getMenu, addMenuItem, updateMenuItem, deleteMenuItem,
   getOrder, getOrderView, setPaymentUrl, mutate, listOrders, setFulfilment,
   saveTranscript, listTranscripts,
