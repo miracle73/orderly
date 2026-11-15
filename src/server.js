@@ -46,7 +46,7 @@ const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
   voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code,
   sharedNumber: process.env.SHARED_PHONE_NUMBER || null,
-  payout: b.paystack_subaccount ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
+  payout: b.bank_code ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
 
 // ---------- Email verification ----------
@@ -132,8 +132,10 @@ me.post('/payout', wrap(async (req, res) => {
     const code = await paystack.saveSubaccount(b.paystack_subaccount, { businessName: b.name, bankCode, accountNumber });
     await store.updateBusiness(b.id, { bank_code: bankCode, bank_name: bank.name, account_number: accountNumber, account_name, paystack_subaccount: code });
   } catch (e) {
-    if (e.paystack) throw httpError(400, `Couldn't verify that account: ${e.message}`);
-    throw e;
+    if (!e.paystack) throw e;
+    // Paystack test mode allows only 3 real bank checks a day. In test mode, save the details unverified so testing can continue.
+    if (!String(process.env.PAYSTACK_SECRET_KEY).startsWith('sk_test_')) throw httpError(400, `Couldn't verify that account: ${e.message}`);
+    await store.updateBusiness(b.id, { bank_code: bankCode, bank_name: bank.name, account_number: accountNumber, account_name: 'Test mode (not verified)' });
   }
   const updated = await businessOr404(b.id);
   await email.sendPayoutUpdated(updated);

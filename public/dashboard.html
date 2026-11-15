@@ -36,7 +36,10 @@
     <div class="setup">
       <div class="card"><h3>1. Business</h3>
         <form id="f-name" class="row"><input name="name" id="in-name" required><button>Save name</button></form>
-        <p class="muted">Customer ordering page (share it, or use it to test): <a id="orderLink2" target="_blank"></a></p></div>
+        <div style="margin-top:16px;padding:16px;border-radius:14px;background:rgba(255,122,26,.08);border:1px solid rgba(255,122,26,.25)">
+          <b>🛍️ Your customer ordering page</b>
+          <p class="muted" style="margin:6px 0 12px">This is exactly what your customers see. They can chat with your AI to order and pay online, without calling. Share it on WhatsApp, Instagram and your flyers.</p>
+          <div class="row"><a class="btn primary" id="orderLink2" target="_blank">Open customer page</a><button type="button" id="copyLink">Copy link</button></div></div></div>
       <div class="card"><h3>2. Get paid <span id="pay-status"></span></h3>
         <p class="muted">Customers pay by card, transfer or USSD. Your money is paid straight into this bank account.</p>
         <p id="payout-now" hidden style="margin:0 0 12px"></p>
@@ -73,7 +76,8 @@ const guard = fn => async e => { e?.preventDefault?.(); const btn = e?.submitter
 function renderMe() {
   $('#bizName').textContent = me.name; $('#in-name').value = me.name;
   const link = new URL('call.html?b=' + me.id, location.href).href;
-  $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link; $('#orderLink2').textContent = link;
+  $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link;
+  $('#copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => { $('#copyLink').textContent = 'Copied ✓'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); });
   $('#pay-status').innerHTML = me.payout ? '<span class="ok">✓ connected</span>' : '<span class="muted">not set up</span>';
   $('#payout-now').hidden = !me.payout;
   if (me.payout) $('#payout-now').innerHTML = `Paying out to <b>${esc(me.payout.accountName)}</b> · ${esc(me.payout.bankName)} ••••${esc(me.payout.accountLast4)}<br><span class="muted">To change it, enter a new account below.</span>`;
@@ -83,8 +87,14 @@ function renderMe() {
   $('#phone-shared').hidden = !shared;
   if (shared) { $('#shared-num').textContent = me.sharedNumber; $('#shared-name').textContent = `“${me.name}”`; $('#shared-code').textContent = me.shortCode; $('#phone-status').innerHTML = '<span class="ok">✓ live</span>'; }
   $('#voice-status').innerHTML = me.voiceReady ? '<span class="ok">ready</span>' : 'not set up';
-  const todo = [!me.payout && 'add your bank account',!me.phoneNumber && !me.sharedNumber && 'get a phone number'].filter(Boolean);
-  $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.join(' and ')} in <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Setup</a>. Add your menu too.</div>` : '';
+  renderBanner();
+}
+// Banner only while something is missing: menu items, bank account, or a phone line.
+async function renderBanner() {
+  const menu = await api('/api/me/menu').catch(() => []);
+  const todo = [!menu.length && 'add your menu', !me.payout && 'add your bank account', !me.phoneNumber && !me.sharedNumber && 'get a phone number'].filter(Boolean);
+  const go = t => `<a href="#" onclick="document.querySelector('[data-tab=${t}]').click();return false">`;
+  $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.map(x => x === 'add your menu' ? go('menu') + x + '</a>' : go('settings') + x + '</a>').join(', ')}.</div>` : '';
 }
 async function loadMe() { me = await api('/api/me'); renderMe(); }
 
@@ -125,7 +135,7 @@ async function loadMenu() {
   document.querySelectorAll('[data-avail]').forEach(i => i.onchange = () => api('/api/me/menu/' + i.dataset.avail, { method: 'PATCH', body: JSON.stringify({ available: i.checked }) }));
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Delete this item?')) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
 }
-$('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); loadMenu(); });
+$('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); loadMenu(); renderBanner(); });
 async function loadTranscripts() {
   const rows = await api('/api/me/transcripts');
   $('#tx-list').innerHTML = rows.map(t => `<details class="card"><summary><b>${esc(t.customer_phone || (t.call_id.startsWith('web_') ? 'Web order' : 'Caller'))}</b>
