@@ -1,4 +1,30 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Payment Received</title><link rel="stylesheet" href="style.css"></head>
-<body><main style="text-align:center;padding-top:15vh"><h1>✅ Payment received</h1><p class="muted">Thank you! Your order is being prepared. You can close this page.</p></main></body></html>
+<title>Payment Status</title><link rel="stylesheet" href="style.css"></head>
+<body><main style="text-align:center;padding-top:15vh;max-width:460px">
+  <div class="logo" style="margin:0 auto 22px;width:56px;height:56px;font-size:26px;color:var(--brand-ink)" id="icon">…</div>
+  <h1 id="t">Confirming your payment…</h1><p class="muted" id="m">This takes a few seconds. Please don't close this page.</p>
+  <button id="retry" hidden>Check again</button>
+</main>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const reference = q.get('reference') || q.get('trxref');
+async function check(attempt = 0) {
+  if (!reference) { $('#icon').textContent = '✓'; $('#t').textContent = 'Thank you!'; $('#m').textContent = 'You can close this page.'; return; }
+  try {
+    const r = await api('/api/payments/verify', { method: 'POST', body: JSON.stringify({ reference }) });
+    if (r.status === 'paid' || r.status === 'success') {
+      $('#icon').textContent = '✓'; $('#t').textContent = 'Payment received 🎉';
+      $('#m').textContent = `Order #${r.orderId} is confirmed and being prepared. You can close this page.`; toast('Payment confirmed');
+    } else if (attempt < 5 && ['ongoing', 'pending', 'processing', 'queued'].includes(r.status)) {
+      setTimeout(() => check(attempt + 1), 3000);
+    } else {
+      $('#icon').textContent = '!'; $('#t').textContent = 'Payment not completed';
+      $('#m').textContent = 'We could not confirm this payment. If you were charged, it will be confirmed automatically shortly.'; $('#retry').hidden = false;
+    }
+  } catch (e) { toast(e.message, 'error'); $('#retry').hidden = false; }
+}
+$('#retry').onclick = () => { $('#retry').hidden = true; check(); };
+check();
+</script></body></html>

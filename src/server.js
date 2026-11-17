@@ -227,7 +227,7 @@ me.post('/password', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-me.get('/orders', wrap(async (req, res) => res.json(await store.listOrders(req.businessId))));
+me.get('/orders', wrap(async (req, res) => { await reconcile(req.businessId); res.json(await store.listOrders(req.businessId)); }));
 me.patch('/orders/:id', wrap(async (req, res) => {
   try { await store.setFulfilment(req.businessId, +req.params.id, req.body?.fulfilment); }
   catch (e) { throw httpError(400, e.message); }
@@ -342,25 +342,47 @@ app.post('/vapi/:businessId', wrap(async (req, res) => {
 
 // ---------- Payments: each business sets this URL as the webhook in its own Paystack dashboard ----------
 // Work is done before responding because Lambda freezes once the response is sent.
-// One platform webhook for every business: set once in the platform Paystack dashboard.
+// Confirms a payment with Paystack and marks the order paid. Idempotent: safe to call many times.
+async function confirmPayment(reference) {
+  const tx = await paystack.verify(reference);
+  if (tx.status !== 'success') return { status: tx.status };
+  let r;
+  try {
+    r = await store.mutate({ paymentRef: tx.reference }, { type: 'payment_success', reference: tx.reference, amountKobo: tx.amount });
+  } catch (e) { if (e.message === 'Unknown payment reference') return { status: 'unknown' }; throw e; }
+  if (r.ok) {
+    const b = await store.getBusiness((await store.pool.query('SELECT business_id FROM orders WHERE id=$1', [r.orderId])).rows[0].business_id);
+    if (r.phone) await sms.send(r.phone, `${b.name}: payment received. Order #${r.orderId} is being prepared. Thank you!`).catch(console.error);
+    await email.sendPaymentReceived(b, r.orderId, r.order, r.phone);
+  }
+  return { status: r.order.status === 'paid' ? 'paid' : 'success', orderId: r.orderId };
+}
+
+// Optional Paystack webhook (one URL per Paystack business). Payments are also confirmed without it, below.
 app.post(['/paystack/webhook', '/paystack/webhook/:businessId'], wrap(async (req, res) => {
   if (!paystack.validSignature(req.rawBody, req.get('x-paystack-signature'))) return res.sendStatus(401);
-  const { event, data } = req.body;
-  if (event === 'charge.success') {
-    const tx = await paystack.verify(data.reference);
-    if (tx.status === 'success') {
-      let r;
-      try {
-        r = await store.mutate({ paymentRef: tx.reference }, { type: 'payment_success', reference: tx.reference, amountKobo: tx.amount });
-      } catch (e) { if (e.message === 'Unknown payment reference') return res.sendStatus(200); throw e; }
-      const b = await store.getBusiness((await store.pool.query('SELECT business_id FROM orders WHERE id=$1', [r.orderId])).rows[0].business_id);
-      if (r.ok && r.phone) await sms.send(r.phone, `${b.name}: payment received. Order #${r.orderId} is being prepared. Thank you!`).catch(console.error);
-      if (r.ok) await email.sendPaymentReceived(b, r.orderId, r.order, r.phone);
-      if (!r.ok) console.warn('payment rejected by state machine', tx.reference, r.error);
-    }
-  }
+  if (req.body?.event === 'charge.success') await confirmPayment(req.body.data.reference);
   res.sendStatus(200);
 }));
+
+// Paystack redirects the customer to paid.html?reference=..., which calls this.
+app.post('/api/payments/verify', wrap(async (req, res) => {
+  const reference = String(req.body?.reference || '');
+  if (!/^[w-]{6,100}$/.test(reference)) throw httpError(400, 'Missing payment reference');
+  try { res.json(await confirmPayment(reference)); } catch (e) { throw httpError(502, 'Could not check the payment with Paystack yet. Please refresh in a moment.'); }
+}));
+
+// Safety net: when the dashboard loads orders, re-check unpaid ones with Paystack (each at most every 30s).
+const lastChecked = new Map();
+async function reconcile(businessId) {
+  const { rows } = await store.pool.query(
+    `SELECT payment_ref FROM orders WHERE business_id=$1 AND status='awaiting_payment' AND payment_ref IS NOT NULL
+     AND updated_at > now() - interval '2 days' ORDER BY updated_at DESC LIMIT 5`, [businessId]);
+  await Promise.all(rows.filter(o => Date.now() - (lastChecked.get(o.payment_ref) || 0) > 30000).map(o => {
+    lastChecked.set(o.payment_ref, Date.now());
+    return confirmPayment(o.payment_ref).catch(e => console.error('reconcile', e.message));
+  }));
+}
 
 const port = process.env.PORT || 3000;
 if (require.main === module) app.listen(port, () => console.log(`Orderly on http://localhost:${port}`));
