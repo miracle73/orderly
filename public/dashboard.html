@@ -57,6 +57,17 @@
         <div id="phone-shared" hidden><p style="font-size:17px;margin:0 0 6px">Customers call <b id="shared-num"></b></p>
           <p class="muted" style="margin:0">and say <b id="shared-name"></b> or your code <b id="shared-code" style="color:var(--brand2);font-size:18px"></b>. Share this on your flyers, WhatsApp and Instagram.</p></div>
         <p class="muted">Voice agent: <span id="voice-status"></span> <button id="sync" style="margin-left:8px">Re-sync voice agent</button></p></div>
+      <div class="card"><h3>5. Connect AI assistants (MCP)</h3>
+        <p class="muted">Run your shop from Claude, ChatGPT or Cursor: "How much did I make today?", "Mark order 12 ready", "Jollof is finished". Create a key, then add Orderly as an MCP server in your assistant.</p>
+        <button type="button" class="primary" id="mcpBtn">Create MCP key</button>
+        <div id="mcpOut" hidden style="margin-top:14px;display:grid;gap:10px">
+          <p style="margin:0">⚠️ Copy your key now. You won't see it again. Creating a new key turns off the old one.</p>
+          <div><span class="muted">Server URL</span><div class="code" id="mcpUrl"></div></div>
+          <div><span class="muted">API key</span><div class="code" id="mcpKey"></div></div>
+          <div><span class="muted">Claude Code</span><div class="code" id="mcpCmd"></div></div>
+          <div><span class="muted">Claude.ai / ChatGPT connector URL (key included, keep it private)</span><div class="code" id="mcpLink"></div></div>
+          <button type="button" id="mcpCopy">Copy key</button>
+        </div></div>
       <div class="card"><h3>4. Account security</h3>
         <p class="muted">Change your password. We'll email you to confirm the change.</p>
         <form id="f-pw" class="row"><input name="currentPassword" type="password" placeholder="Current password" required autocomplete="current-password">
@@ -109,6 +120,16 @@ api('/api/banks').then(banks => { $('#banks').insertAdjacentHTML('beforeend', ba
 $('#f-phone').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
 $('#f-twilio').onsubmit = guard(async e => { me = await api('/api/me/phone-number', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); renderMe(); });
 $('#f-pw').onsubmit = guard(async e => { await api('/api/me/password', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); toast('Password changed. We sent you a confirmation email.'); });
+$('#mcpBtn').onclick = guard(async () => {
+  if (!$('#mcpOut').hidden && !(await confirmModal({ title: 'Create a new key?', message: 'Your current MCP key will stop working.', ok: 'Create new key' }))) return;
+  const { key, url } = await api('/api/me/mcp-key', { method: 'POST' });
+  $('#mcpUrl').textContent = url; $('#mcpKey').textContent = key;
+  $('#mcpCmd').textContent = `claude mcp add --transport http orderly ${url} --header "Authorization: Bearer ${key}"`;
+  $('#mcpLink').textContent = `${url}?key=${key}`;
+  $('#mcpOut').hidden = false; $('#mcpBtn').textContent = 'Create a new key';
+  $('#mcpCopy').onclick = () => navigator.clipboard.writeText(key).then(() => toast('API key copied'));
+  toast('MCP key created. Copy it now.');
+});
 $('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); toast('Voice agent updated'); });
 
 async function loadOrders() {

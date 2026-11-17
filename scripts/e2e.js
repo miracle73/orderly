@@ -84,7 +84,8 @@ const created = { emails: [], phoneIds: [] };
   ok((await req('/api/me/payout', { token: tA, body: { bankCode: '057', accountNumber: '123' } })).status === 400, 'short account number rejected');
   ok((await req('/api/me/payout', { token: tA, body: { bankCode: '999999', accountNumber: '0001234567' } })).status === 400, 'unknown bank rejected');
   r = await req('/api/me/payout', { token: tA, body: { bankCode: '057', accountNumber: '0000000000' } });
-  ok(r.status === 200 && r.body.payout?.accountName, 'bank account verified + Paystack subaccount created', r.body.payout ? `${r.body.payout.accountName} · ${r.body.payout.bankName}` : JSON.stringify(r.body));
+  if (String(env.PAYSTACK_SECRET_KEY).startsWith('sk_live_')) ok(r.status === 400, 'live mode rejects a fake bank account', r.body.error);
+  else ok(r.status === 200 && r.body.payout?.accountName, 'bank account saved', JSON.stringify(r.body.payout || r.body));
 
   // --- Menu
   for (const [name, priceNaira, aliases] of [['Jollof Rice', 2500, 'jollof'], ['Chicken', 1500, ''], ['Coke', 500, 'coca cola'], ['Suya', 2000, '']]) {
@@ -107,6 +108,32 @@ const created = { emails: [], phoneIds: [] };
   ok(menu.some(m => m.name === 'Party Jollof' && m.aliases.includes('jollof rice')), 'rename item + edit other names');
   ok((await req(`/api/me/menu/${menu.find(m => m.name === 'Party Jollof').id}`, { method: 'PATCH', token: tA, body: { name: 'Chicken' } })).status === 400, 'rename to duplicate name rejected');
   await req(`/api/me/menu/${menu.find(m => m.name === 'Party Jollof').id}`, { method: 'PATCH', token: tA, body: { name: 'Jollof Rice' } });
+
+  // --- Google sign-in config
+  ok(!!(await req('/api/auth/config')).body.googleClientId, 'Google sign-in configured');
+  ok((await req('/api/auth/google', { body: { credential: 'fake' } })).status === 401, 'fake Google credential rejected');
+
+  // --- MCP server
+  const mk = (await req('/api/me/mcp-key', { token: tA, body: {} })).body;
+  ok(/^ord_/.test(mk.key || '') && mk.url.endsWith('/mcp'), 'create MCP key');
+  const rpc = async (method, params, key = mk.key) => (await req('/mcp', { body: { jsonrpc: '2.0', id: 1, method, params }, headers: { Authorization: `Bearer ${key}` } }));
+  ok((await rpc('tools/list', {}, 'ord_wrong')).status === 401, 'MCP rejects a wrong key');
+  r = await rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
+  ok(r.body.result?.serverInfo?.name === 'orderly', 'MCP initialize');
+  r = await rpc('tools/list', {});
+  ok(r.body.result?.tools?.length === 7, 'MCP lists 7 tools');
+  r = await rpc('tools/call', { name: 'list_menu', arguments: {} });
+  ok(/Jollof Rice/.test(r.body.result?.content?.[0]?.text || ''), 'MCP list_menu', (r.body.result?.content?.[0]?.text || '').split(String.fromCharCode(10))[0]);
+  const sid0 = (await req('/api/me/menu', { token: tA })).body.find(m => m.name === 'Chicken').id;
+  r = await rpc('tools/call', { name: 'update_menu_item', arguments: { item_id: sid0, available: false } });
+  ok(/SOLD OUT/.test(r.body.result?.content?.[0]?.text || ''), 'MCP marks item sold out');
+  await rpc('tools/call', { name: 'update_menu_item', arguments: { item_id: sid0, available: true } });
+  r = await rpc('tools/call', { name: 'get_sales_summary', arguments: {} });
+  ok(/paid order/.test(r.body.result?.content?.[0]?.text || ''), 'MCP sales summary', r.body.result?.content?.[0]?.text);
+  r = await rpc('tools/call', { name: 'update_order_status', arguments: { order_id: 999999, status: 'ready' } });
+  ok(r.body.result?.isError === true, 'MCP refuses unknown order');
+  r = await (await fetch(API + '/mcp?key=' + mk.key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'ping' }) })).json();
+  ok(r.result && !r.error, 'MCP key in URL works (for connectors)');
 
   // --- Isolation
   await req(`/api/me/menu/${id('Chicken')}`, { method: 'PATCH', token: tB, body: { priceNaira: 1 } });

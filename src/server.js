@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const { runTool } = require('./tools');
 const { runAgent, runRouter } = require('./agent');
 const { forSpeech } = require('./speech');
+const mcp = require('./mcp');
 
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -20,7 +21,7 @@ app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody =
 app.use((req, res, next) => {
   res.set({
     'Access-Control-Allow-Origin': process.env.FRONTEND_URL || '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   });
   if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -227,6 +228,13 @@ me.post('/password', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// MCP: create (or rotate) this business's API key. Shown once; only its hash is stored.
+me.post('/mcp-key', wrap(async (req, res) => {
+  const key = 'ord_' + crypto.randomBytes(24).toString('base64url');
+  await store.updateBusiness(req.businessId, { mcp_key_hash: sha256(key) });
+  res.json({ key, url: `${baseUrl(req)}/mcp` });
+}));
+
 me.get('/orders', wrap(async (req, res) => { await reconcile(req.businessId); res.json(await store.listOrders(req.businessId)); }));
 me.patch('/orders/:id', wrap(async (req, res) => {
   try { await store.setFulfilment(req.businessId, +req.params.id, req.body?.fulfilment); }
@@ -256,6 +264,21 @@ me.patch('/menu/:id', wrap(async (req, res) => {
 }));
 me.delete('/menu/:id', wrap(async (req, res) => { await store.deleteMenuItem(req.businessId, +req.params.id); res.json({ ok: true }); }));
 app.use('/api/me', me);
+
+// ---------- MCP server (Streamable HTTP, stateless) ----------
+app.get('/mcp', (_req, res) => res.set('Allow', 'POST').status(405).json({ error: 'Use POST (MCP Streamable HTTP)' }));
+app.post('/mcp', wrap(async (req, res) => {
+  const key = (req.get('authorization') || '').replace(/^Bearer[ \t]+/i, '') || String(req.query.key || '');
+  const b = key && await store.getBusinessByMcpHash(sha256(key));
+  if (!b) return res.status(401).set('WWW-Authenticate', 'Bearer').json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Invalid or missing Orderly API key' } });
+  const body = req.body;
+  if (Array.isArray(body)) {
+    const out = (await Promise.all(body.map(m => mcp.handle(b, m)))).filter(Boolean);
+    return out.length ? res.json(out) : res.status(202).end();
+  }
+  const out = await mcp.handle(b, body);
+  return out ? res.json(out) : res.status(202).end();
+}));
 
 // ---------- Public ordering page ----------
 app.get('/api/public/:businessId', wrap(async (req, res) => {
