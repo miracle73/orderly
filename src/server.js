@@ -368,7 +368,7 @@ app.post(['/paystack/webhook', '/paystack/webhook/:businessId'], wrap(async (req
 // Paystack redirects the customer to paid.html?reference=..., which calls this.
 app.post('/api/payments/verify', wrap(async (req, res) => {
   const reference = String(req.body?.reference || '');
-  if (!/^[w-]{6,100}$/.test(reference)) throw httpError(400, 'Missing payment reference');
+  if (!/^[A-Za-z0-9_-]{6,100}$/.test(reference)) throw httpError(400, 'Missing payment reference');
   try { res.json(await confirmPayment(reference)); } catch (e) { throw httpError(502, 'Could not check the payment with Paystack yet. Please refresh in a moment.'); }
 }));
 
