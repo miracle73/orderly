@@ -85,3 +85,6 @@ CREATE INDEX IF NOT EXISTS businesses_reset_idx ON businesses (reset_token_hash)
 
 -- v5: MCP API keys (hashed)
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS mcp_key_hash TEXT UNIQUE;
+
+-- v6: how the account signs in ('password' or 'google'); one method per email
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'password';

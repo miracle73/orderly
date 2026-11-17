@@ -45,7 +45,7 @@ async function getBusiness(id) {
   return rows[0] || null;
 }
 const BUSINESS_FIELDS = ['name', 'vapi_assistant_id', 'vapi_phone_number_id', 'phone_number', 'email_verified',
-  'verify_token_hash', 'verify_sent_at', 'password_hash', 'reset_token_hash', 'reset_sent_at', 'mcp_key_hash', 'bank_code', 'bank_name', 'account_number', 'account_name', 'paystack_subaccount'];
+  'verify_token_hash', 'verify_sent_at', 'password_hash', 'reset_token_hash', 'reset_sent_at', 'mcp_key_hash', 'auth_provider', 'bank_code', 'bank_name', 'account_number', 'account_name', 'paystack_subaccount'];
 async function getBusinessByMcpHash(hash) {
   const { rows } = await pool.query('SELECT * FROM businesses WHERE mcp_key_hash = $1', [hash]);
   return rows[0] || null;

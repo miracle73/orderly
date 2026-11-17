@@ -46,7 +46,7 @@ async function businessOr404(id) {
 
 const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
-  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code,
+  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code, authProvider: b.auth_provider,
   sharedNumber: process.env.SHARED_PHONE_NUMBER || null,
   payout: b.bank_code ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
@@ -69,7 +69,8 @@ app.post('/api/auth/signup', wrap(async (req, res) => {
   if (!name?.trim() || !/^\S+@\S+\.\S+$/.test(email || '') || String(password || '').length < 8) {
     throw httpError(400, 'Business name, valid email and a password of 8+ characters are required');
   }
-  if (await store.getBusinessByEmail(email)) throw httpError(409, 'An account with this email already exists');
+  const existing = await store.getBusinessByEmail(email);
+  if (existing) throw httpError(409, existing.auth_provider === 'google' ? 'This email signs in with Google. Use "Continue with Google" instead.' : 'An account with this email already exists. Log in instead.');
   const b = await store.createBusiness({ name: name.trim(), email, passwordHash: auth.hashPassword(password) });
   try {
     await store.updateBusiness(b.id, { vapi_assistant_id: await vapi.syncAssistant(b, baseUrl(req)) });
@@ -81,6 +82,7 @@ app.post('/api/auth/signup', wrap(async (req, res) => {
 app.post('/api/auth/login', wrap(async (req, res) => {
   const { email, password } = req.body || {};
   const b = await store.getBusinessByEmail(email || '');
+  if (b?.auth_provider === 'google') throw httpError(400, 'This email signs in with Google. Use "Continue with Google" instead.');
   if (!b || !auth.checkPassword(String(password || ''), b.password_hash)) throw httpError(401, 'Wrong email or password');
   if (!b.email_verified) return res.status(403).json({ error: 'Please verify your email first. Check your inbox.', verifyRequired: true });
   res.json({ token: auth.signToken({ bid: b.id }) });
@@ -116,11 +118,12 @@ app.post('/api/auth/google', wrap(async (req, res) => {
   if (!r.ok || g.aud !== process.env.GOOGLE_CLIENT_ID || !['accounts.google.com', 'https://accounts.google.com'].includes(g.iss)
       || String(g.email_verified) !== 'true' || Number(g.exp) * 1000 < Date.now()) throw httpError(401, 'Google sign-in failed. Please try again.');
   let b = await store.getBusinessByEmail(g.email);
+  if (b && b.auth_provider !== 'google') throw httpError(409, 'This email is registered with a password. Log in with your email and password instead.');
   let created = false;
   if (!b) {
     const name = String(businessName || '').trim() || `${g.given_name || g.name || 'My'}'s Business`;
     b = await store.createBusiness({ name, email: g.email, passwordHash: auth.hashPassword(crypto.randomBytes(24).toString('hex')) });
-    await store.updateBusiness(b.id, { email_verified: true });
+    await store.updateBusiness(b.id, { email_verified: true, auth_provider: 'google' });
     try { await store.updateBusiness(b.id, { vapi_assistant_id: await vapi.syncAssistant(b, baseUrl(req)) }); } catch (e) { console.error('assistant create failed', e.message); }
     await email.sendWelcome(b);
     created = true;
@@ -137,7 +140,7 @@ const strongEnough = p => String(p || '').length >= 8;
 // Always answers OK so it can't be used to discover which emails have accounts.
 app.post('/api/auth/forgot', wrap(async (req, res) => {
   const b = await store.getBusinessByEmail(String(req.body?.email || ''));
-  if (b && (!b.reset_sent_at || Date.now() - new Date(b.reset_sent_at).getTime() > 60000)) {
+  if (b && b.auth_provider !== 'google' && (!b.reset_sent_at || Date.now() - new Date(b.reset_sent_at).getTime() > 60000)) {
     const token = crypto.randomBytes(32).toString('base64url');
     await store.updateBusiness(b.id, { reset_token_hash: sha256(token), reset_sent_at: new Date() });
     const origin = process.env.FRONTEND_URL || req.get('origin') || baseUrl(req);
@@ -221,6 +224,7 @@ me.post('/phone-number', wrap(async (req, res) => {
 me.post('/password', wrap(async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   const b = await businessOr404(req.businessId);
+  if (b.auth_provider === 'google') throw httpError(400, 'Your account signs in with Google, so there is no Orderly password to change.');
   if (!auth.checkPassword(String(currentPassword || ''), b.password_hash)) throw httpError(400, 'Your current password is wrong');
   if (!strongEnough(newPassword)) throw httpError(400, 'New password must be at least 8 characters');
   await store.updateBusiness(b.id, { password_hash: auth.hashPassword(newPassword) });

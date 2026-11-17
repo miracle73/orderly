@@ -113,6 +113,15 @@ const created = { emails: [], phoneIds: [] };
   ok(!!(await req('/api/auth/config')).body.googleClientId, 'Google sign-in configured');
   ok((await req('/api/auth/google', { body: { credential: 'fake' } })).status === 401, 'fake Google credential rejected');
 
+  // --- One sign-in method per email
+  await (await getDb()).query("UPDATE businesses SET auth_provider='google' WHERE email=lower($1)", [B.email]);
+  r = await req('/api/auth/login', { body: { email: B.email, password: B.password } });
+  ok(r.status === 400 && /Google/.test(r.body.error), 'Google account cannot log in with a password');
+  r = await req('/api/auth/signup', { body: { ...B, name: 'Dup' } });
+  ok(r.status === 409 && /Google/.test(r.body.error), 'cannot register a password account with a Google email');
+  ok((await req('/api/me/password', { token: tB, body: { currentPassword: B.password, newPassword: 'newpass123' } })).status === 400, 'Google account has no password to change');
+  ok((await req('/api/me', { token: tA })).body.authProvider === 'password', 'password account reports its sign-in method');
+
   // --- MCP server
   const mk = (await req('/api/me/mcp-key', { token: tA, body: {} })).body;
   ok(/^ord_/.test(mk.key || '') && mk.url.endsWith('/mcp'), 'create MCP key');

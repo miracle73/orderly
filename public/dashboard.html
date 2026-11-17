@@ -94,6 +94,7 @@ function renderMe() {
   const link = new URL('call.html?b=' + me.id, location.href).href;
   $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link;
   $('#copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => { $('#copyLink').textContent = 'Copied ✓'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); });
+  $('#f-pw').closest('.card').hidden = me.authProvider === 'google';
   $('#pay-status').innerHTML = me.payout ? '<span class="ok">✓ connected</span>' : '<span class="muted">not set up</span>';
   $('#payout-now').hidden = !me.payout;
   if (me.payout) $('#payout-now').innerHTML = `Paying out to <b>${esc(me.payout.accountName)}</b> · ${esc(me.payout.bankName)} ••••${esc(me.payout.accountLast4)}<br><span class="muted">To change it, enter a new account below.</span>`;
