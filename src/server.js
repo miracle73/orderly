@@ -103,6 +103,32 @@ app.post('/api/auth/resend-verification', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- Google sign-in ----------
+app.get('/api/auth/config', (_req, res) => res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || null }));
+
+app.post('/api/auth/google', wrap(async (req, res) => {
+  const { credential, businessName } = req.body || {};
+  if (!process.env.GOOGLE_CLIENT_ID) throw httpError(400, 'Google sign-in is not set up');
+  // Google verifies the ID token's signature for us; we check it was issued to our app.
+  const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(credential || '')));
+  const g = await r.json().catch(() => ({}));
+  if (!r.ok || g.aud !== process.env.GOOGLE_CLIENT_ID || !['accounts.google.com', 'https://accounts.google.com'].includes(g.iss)
+      || String(g.email_verified) !== 'true' || Number(g.exp) * 1000 < Date.now()) throw httpError(401, 'Google sign-in failed. Please try again.');
+  let b = await store.getBusinessByEmail(g.email);
+  let created = false;
+  if (!b) {
+    const name = String(businessName || '').trim() || `${g.given_name || g.name || 'My'}'s Business`;
+    b = await store.createBusiness({ name, email: g.email, passwordHash: auth.hashPassword(crypto.randomBytes(24).toString('hex')) });
+    await store.updateBusiness(b.id, { email_verified: true });
+    try { await store.updateBusiness(b.id, { vapi_assistant_id: await vapi.syncAssistant(b, baseUrl(req)) }); } catch (e) { console.error('assistant create failed', e.message); }
+    await email.sendWelcome(b);
+    created = true;
+  } else if (!b.email_verified) {
+    await store.updateBusiness(b.id, { email_verified: true }); // Google has verified this email
+  }
+  res.json({ token: auth.signToken({ bid: b.id }), created });
+}));
+
 // ---------- Password reset ----------
 const RESET_TTL_MS = 3600 * 1000;
 const strongEnough = p => String(p || '').length >= 8;

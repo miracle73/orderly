@@ -14,6 +14,7 @@
 .auth h1{font-size:34px;margin:0 0 6px}
 .auth form{display:grid;gap:12px;margin-top:22px}.auth input{width:100%}
 .tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:4px 0 12px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 .tabs button{border:0;background:transparent;justify-content:center;color:var(--muted)}.tabs button.active{background:var(--card2);color:var(--ink)}
 #submit{justify-content:center;padding:14px}
 @media (max-width:860px){.split{grid-template-columns:1fr}.side{padding:28px 20px 34px;min-height:auto;gap:28px}.side h2{font-size:34px}.quote{display:none}}
@@ -35,6 +36,7 @@
       <a href="#" id="forgotLink" class="muted" style="font-size:13.5px;justify-self:end;text-decoration:none">Forgot password?</a>
       <button class="primary" id="submit">Log in</button>
       <button type="button" id="resend" hidden>Resend verification email</button>
+      <div id="gwrap" hidden><div class="or"><span>or</span></div><div id="gbtn" style="display:flex;justify-content:center"></div></div>
     </form>
     <form id="forgotBox" hidden style="display:grid;gap:12px;margin-top:22px">
       <input name="email" type="email" placeholder="Your account email" required autocomplete="email">
@@ -60,6 +62,24 @@ function setMode(m) {
   $('#sub').textContent = m === 'login' ? "Log in to see today's orders." : 'Set up your AI receptionist in under 5 minutes.';
 }
 setMode(mode);
+// Google sign-in (shown only when GOOGLE_CLIENT_ID is configured on the backend)
+api('/api/auth/config').then(({ googleClientId }) => {
+  if (!googleClientId) return;
+  const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+  s.onload = () => {
+    google.accounts.id.initialize({ client_id: googleClientId, callback: async ({ credential }) => {
+      try {
+        const r = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential, businessName: $('[name=name]').value }) });
+        store.set('orderly_token', r.token);
+        store.set('orderly_flash', r.created ? 'Account created with Google. Rename your business in Setup if needed.' : 'Welcome back!');
+        location.href = 'dashboard.html';
+      } catch (err) { toast(err.message, 'error'); }
+    } });
+    google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', width: 320 });
+    $('#gwrap').hidden = false;
+  };
+  document.head.appendChild(s);
+}).catch(() => {});
 $('#t-login').onclick = () => setMode('login'); $('#t-signup').onclick = () => setMode('signup');
 $('#f').onsubmit = async e => {
   e.preventDefault(); $('#submit').disabled = true; $('#resend').hidden = true;
