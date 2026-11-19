@@ -46,7 +46,7 @@ main{max-width:1180px;margin:0 auto;padding:24px 20px 40px}
   body.app main{padding-bottom:110px}
   body.app header{position:sticky;top:0;z-index:5;background:rgba(10,13,11,.96);border-bottom:1px solid var(--line)}
   body.app header nav{position:fixed;left:12px;right:12px;bottom:12px;margin:0;flex-wrap:nowrap;justify-content:space-around;padding:8px;border-radius:22px;background:rgba(22,27,24,.92);backdrop-filter:blur(20px);border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5)}
-  body.app header nav [data-tab]{flex-direction:column;gap:5px;font-size:11px;padding:8px 10px;flex:1;justify-content:center}
+  body.app header nav{overflow-x:auto;justify-content:flex-start}body.app header nav [data-tab]{flex-direction:column;gap:5px;font-size:11px;padding:8px 10px;flex:0 0 auto;min-width:64px;justify-content:center}
   body.app header nav .btn,body.app header nav #logout{display:none}
   body.app #mobileActions{display:flex}
 }
