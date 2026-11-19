@@ -13,6 +13,7 @@ const { runTool } = require('./tools');
 const { runAgent, runRouter } = require('./agent');
 const { forSpeech } = require('./speech');
 const mcp = require('./mcp');
+const books = require('./books');
 
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -239,6 +240,23 @@ me.post('/mcp-key', wrap(async (req, res) => {
   res.json({ key, url: `${baseUrl(req)}/mcp` });
 }));
 
+// ---------- Bookings, money, receipts ----------
+me.get('/bookings', wrap(async (req, res) => res.json(await books.listBookings(req.businessId, req.query))));
+me.post('/bookings', wrap(async (req, res) => res.json(await books.addBooking(req.businessId, req.body || {}))));
+me.patch('/bookings/:id', wrap(async (req, res) => res.json(await books.updateBooking(req.businessId, +req.params.id, req.body || {}))));
+me.delete('/bookings/:id', wrap(async (req, res) => { await books.deleteBooking(req.businessId, +req.params.id); res.json({ ok: true }); }));
+me.get('/transactions', wrap(async (req, res) => res.json(await books.listTransactions(req.businessId, Math.min(+req.query.days || 30, 366)))));
+me.post('/transactions', wrap(async (req, res) => res.json(await books.addTransaction(req.businessId, req.body || {}))));
+me.delete('/transactions/:id', wrap(async (req, res) => { await books.deleteTransaction(req.businessId, +req.params.id); res.json({ ok: true }); }));
+me.get('/accounting', wrap(async (req, res) => res.json(await books.accounting(req.businessId, Math.min(Math.max(+req.query.days || 30, 1), 366)))));
+me.get('/orders/:id/receipt', wrap(async (req, res) => {
+  const { rows: [o] } = await store.pool.query('SELECT status FROM orders WHERE id=$1 AND business_id=$2', [+req.params.id, req.businessId]);
+  if (!o) throw httpError(404, 'Order not found');
+  if (o.status !== 'paid') throw httpError(400, 'Receipts are only available for paid orders');
+  const origin = process.env.FRONTEND_URL || req.get('origin') || baseUrl(req);
+  res.json({ url: `${origin}/receipt.html?r=${books.receiptToken(+req.params.id)}` });
+}));
+
 me.get('/orders', wrap(async (req, res) => { await reconcile(req.businessId); res.json(await store.listOrders(req.businessId)); }));
 me.patch('/orders/:id', wrap(async (req, res) => {
   try { await store.setFulfilment(req.businessId, +req.params.id, req.body?.fulfilment); }
@@ -282,6 +300,12 @@ app.post('/mcp', wrap(async (req, res) => {
   }
   const out = await mcp.handle(b, body);
   return out ? res.json(out) : res.status(202).end();
+}));
+
+app.get('/api/receipts/:token', wrap(async (req, res) => {
+  const r = await books.receipt(req.params.token);
+  if (!r) throw httpError(404, 'Receipt not found');
+  res.json(r);
 }));
 
 // ---------- Public ordering page ----------

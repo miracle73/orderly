@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Receipt</title><link rel="stylesheet" href="style.css">
+<style>
+.rc{max-width:480px;margin:32px auto;background:#fff;color:#1c1c1c;border-radius:20px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.rc header{display:block;background:#0f1411;color:#f4efe6;padding:22px 26px}.rc header b{font:700 21px var(--display)}
+.rc .body{padding:24px 26px}.rc .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;font-size:13.5px;margin-bottom:18px}
+.rc .meta span{display:block;color:#888;font-size:12px}.rc table td{border-color:#eee;padding:10px 0;color:#1c1c1c}.rc th{padding:8px 0}
+.rc .total td{font-weight:800;font-size:18px;border-top:2px solid #1c1c1c;border-bottom:0}
+.paid{display:inline-block;margin-top:8px;padding:4px 12px;border-radius:99px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#1a0d03;font-weight:700;font-size:12px;letter-spacing:.08em}
+.foot{padding:16px 26px 22px;color:#999;font-size:12px;border-top:1px dashed #ddd}
+.actions{max-width:480px;margin:0 auto 40px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+@media print{body{background:#fff}.actions,#toasts{display:none}.rc{box-shadow:none;margin:0 auto}}
+</style></head>
+<body>
+<div class="rc" id="rc" hidden>
+  <header><b id="biz"></b><div style="opacity:.7;font-size:13px;margin-top:4px">Receipt</div><span class="paid">PAID</span></header>
+  <div class="body">
+    <div class="meta"><div><span>Receipt no.</span><b id="no"></b></div><div><span>Date</span><b id="date"></b></div>
+      <div><span>Order</span><b id="ord"></b></div><div><span>Customer</span><b id="cust"></b></div></div>
+    <table><thead><tr><th style="color:#888">Item</th><th style="text-align:right;color:#888">Amount</th></tr></thead><tbody id="items"></tbody></table>
+  </div>
+  <div class="foot">Payment reference: <span id="ref"></span><br>Paid via Paystack · Issued by Orderly on behalf of <span id="biz2"></span></div>
+</div>
+<div class="actions" id="actions" hidden><button class="primary" onclick="print()">Print / Save as PDF</button><a class="btn" id="wa" target="_blank">Share on WhatsApp</a><button id="copy">Copy link</button></div>
+<p id="err" class="muted" style="text-align:center;padding-top:20vh" hidden>This receipt could not be found.</p>
+<script src="config.js"></script><script src="app.js"></script>
+<script>
+(async () => {
+  try {
+    const r = await api('/api/receipts/' + encodeURIComponent(new URLSearchParams(location.search).get('r') || ''));
+    document.title = `Receipt ${r.number}`;
+    $('#biz').textContent = r.business.name; $('#biz2').textContent = r.business.name;
+    $('#no').textContent = r.number; $('#ord').textContent = '#' + r.orderId; $('#cust').textContent = r.customer || 'Customer';
+    $('#date').textContent = new Date(r.paidAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); $('#ref').textContent = r.reference || '—';
+    $('#items').innerHTML = r.items.map(i => `<tr><td>${i.qty} × ${esc(i.name)}</td><td style="text-align:right">${naira(i.qty * i.priceKobo)}</td></tr>`).join('')
+      + `<tr class="total"><td>Total paid</td><td style="text-align:right">${naira(r.totalKobo)}</td></tr>`;
+    $('#wa').href = 'https://wa.me/?text=' + encodeURIComponent(`Your receipt from ${r.business.name} (${r.number}): ${location.href}`);
+    $('#copy').onclick = () => navigator.clipboard.writeText(location.href).then(() => toast('Receipt link copied'));
+    $('#rc').hidden = false; $('#actions').hidden = false;
+  } catch { $('#err').hidden = false; }
+})();
+</script></body></html>

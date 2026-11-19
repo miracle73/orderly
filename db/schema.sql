@@ -88,3 +88,29 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS mcp_key_hash TEXT UNIQUE;
 
 -- v6: how the account signs in ('password' or 'google'); one method per email
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'password';
+
+-- v7: bookings, cashflow ledger (paid orders count as income automatically)
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT,
+  service TEXT NOT NULL,
+  starts_at TIMESTAMPTZ NOT NULL,
+  amount_kobo INTEGER NOT NULL DEFAULT 0 CHECK (amount_kobo >= 0),
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'booked' CHECK (status IN ('booked','completed','cancelled','no_show')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS bookings_business_idx ON bookings (business_id, starts_at);
+CREATE TABLE IF NOT EXISTS transactions (
+  id SERIAL PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('income','expense')),
+  amount_kobo INTEGER NOT NULL CHECK (amount_kobo > 0),
+  category TEXT NOT NULL DEFAULT 'Other',
+  note TEXT,
+  occurred_on DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS transactions_business_idx ON transactions (business_id, occurred_on DESC);

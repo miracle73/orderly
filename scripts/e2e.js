@@ -122,6 +122,18 @@ const created = { emails: [], phoneIds: [] };
   ok((await req('/api/me/password', { token: tB, body: { currentPassword: B.password, newPassword: 'newpass123' } })).status === 400, 'Google account has no password to change');
   ok((await req('/api/me', { token: tA })).body.authProvider === 'password', 'password account reports its sign-in method');
 
+  // --- Bookings, money, receipts
+  r = await req('/api/me/bookings', { token: tA, body: { customerName: 'Ada', customerPhone: '+2348000000000', service: 'Haircut', startsAt: new Date(Date.now() - 3600e3).toISOString(), priceNaira: 3000 } });
+  ok(r.status === 200 && r.body.id, 'add booking');
+  ok((await req('/api/me/bookings', { token: tA, body: { customerName: '', service: 'x', startsAt: 'bad' } })).status === 400, 'invalid booking rejected');
+  ok((await req('/api/me/bookings/' + r.body.id, { method: 'PATCH', token: tA, body: { status: 'completed' } })).body.status === 'completed', 'complete booking');
+  ok((await req('/api/me/bookings', { token: tB })).body.length === 0, "other business can't see my bookings");
+  ok((await req('/api/me/transactions', { token: tA, body: { kind: 'expense', amountNaira: 1200, category: 'Stock' } })).status === 200, 'record expense');
+  ok((await req('/api/me/transactions', { token: tA, body: { kind: 'expense', amountNaira: -5 } })).status === 400, 'negative amount rejected');
+  const acc = (await req('/api/me/accounting?days=7', { token: tA })).body;
+  ok(acc.incomeKobo === 300000 && acc.expensesKobo === 120000 && acc.netKobo === 180000 && acc.daily.length === 7, 'accounting: in ₦3,000, out ₦1,200, profit ₦1,800', `net ₦${acc.netKobo / 100}`);
+  ok((await req('/api/receipts/1.forgedsignatureforged12')).status === 404, 'forged receipt link rejected');
+
   // --- MCP server
   const mk = (await req('/api/me/mcp-key', { token: tA, body: {} })).body;
   ok(/^ord_/.test(mk.key || '') && mk.url.endsWith('/mcp'), 'create MCP key');

@@ -8,6 +8,8 @@
   <nav>
     <button data-tab="orders" class="active"><svg viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Orders</button>
     <button data-tab="menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Menu</button>
+    <button data-tab="bookings"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Bookings</button>
+    <button data-tab="money"><svg viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M16 13h2M3 10h18"/></svg>Money</button>
     <button data-tab="transcripts"><svg viewBox="0 0 24 24"><path d="M3 12h2l2-6 4 12 3-9 2 3h5"/></svg>Calls</button>
     <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Setup</button>
     <a class="btn primary" id="orderLink" target="_blank">Test ordering</a><button id="logout">Log out</button></nav></header>
@@ -30,6 +32,29 @@
       <input name="priceNaira" type="number" min="1" step="0.01" placeholder="Price ₦" required><button class="primary">Add item</button></form></div>
     <div class="card table-wrap"><table><thead><tr><th>Item</th><th>Other names</th><th>Price (₦)</th><th>Available</th><th></th></tr></thead><tbody id="menu-body"></tbody></table></div>
   </section>
+  <section id="bookings" hidden>
+    <h2 class="page-title">Bookings</h2><p class="page-sub">Appointments, reservations and services. Completed bookings count as income.</p>
+    <div class="card"><form id="f-book" class="row">
+      <input name="customerName" placeholder="Customer name" required><input name="customerPhone" placeholder="Phone (optional)">
+      <input name="service" placeholder="Service / table / item" required><input name="startsAt" type="datetime-local" required>
+      <input name="priceNaira" type="number" min="0" step="0.01" placeholder="Price ₦" style="width:120px"><button class="primary">Add booking</button></form></div>
+    <div class="card table-wrap"><table><thead><tr><th>When</th><th>Customer</th><th>Service</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="book-body"></tbody></table></div>
+  </section>
+  <section id="money" hidden>
+    <h2 class="page-title">Money</h2><p class="page-sub">Cashflow and simple accounts. Paid orders and completed bookings are added automatically.</p>
+    <div class="row" style="margin-bottom:14px"><select id="mDays"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select></div>
+    <div class="stats"><div class="card stat"><span class="muted">Money in</span><b id="m-in">-</b></div><div class="card stat"><span class="muted">Money out</span><b id="m-out">-</b></div>
+      <div class="card stat"><span class="muted">Profit</span><b id="m-net">-</b></div><div class="card stat"><span class="muted">Paid orders</span><b id="m-orders">-</b></div></div>
+    <div class="card"><h3 style="margin-top:0">Cashflow</h3><div id="m-chart" style="display:flex;align-items:flex-end;gap:3px;height:140px"></div>
+      <p class="muted" style="font-size:13px;margin:8px 0 0"><span style="color:var(--brand)">■</span> money in &nbsp; <span style="color:#ff4d2e">■</span> money out</p></div>
+    <div class="card"><h3 style="margin-top:0">Record income or expense</h3><form id="f-tx" class="row">
+      <select name="kind"><option value="expense">Expense</option><option value="income">Income</option></select>
+      <input name="amountNaira" type="number" min="0.01" step="0.01" placeholder="Amount ₦" required style="width:130px">
+      <input name="category" placeholder="Category (e.g. Rent, Stock, Salary)" list="cats"><datalist id="cats"><option>Stock</option><option>Rent</option><option>Salary</option><option>Transport</option><option>Utilities</option><option>Marketing</option><option>Cash sale</option></datalist>
+      <input name="note" placeholder="Note (optional)"><input name="occurredOn" type="date"><button class="primary">Save</button></form></div>
+    <div class="card"><h3 style="margin-top:0">Expenses by category</h3><div id="m-cats" class="muted">-</div></div>
+    <div class="card table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Note</th><th>Amount</th><th></th></tr></thead><tbody id="tx-body"></tbody></table></div>
+  </section>
   <section id="transcripts" hidden><h2 class="page-title">Calls</h2><p class="page-sub">Recordings and transcripts of every conversation.</p><div id="tx-list"></div></section>
   <section id="settings" hidden>
     <h2 class="page-title">Setup</h2><p class="page-sub">Three steps and your line is live.</p>
@@ -46,7 +71,7 @@
         <form id="f-pay" class="row"><select name="bankCode" id="banks" required style="min-width:220px"><option value="">Choose your bank…</option></select>
           <input name="accountNumber" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="10-digit account number" required style="width:200px">
           <button class="primary">Verify &amp; save</button></form></div>
-      <div class="card"><h3>3. Phone number <span id="phone-status"></span></h3>
+      <div class="card" hidden><h3>3. Phone number <span id="phone-status"></span></h3>
         <div id="phone-none">
           <p class="muted">Get a number customers can call. Free Vapi numbers are US numbers; to use a Nigerian line, import a Twilio number.</p>
           <form id="f-phone" class="row"><input name="areaCode" placeholder="US area code (optional)" style="width:200px"><button class="primary">Get a free number</button></form>
@@ -57,7 +82,7 @@
         <div id="phone-shared" hidden><p style="font-size:17px;margin:0 0 6px">Customers call <b id="shared-num"></b></p>
           <p class="muted" style="margin:0">and say <b id="shared-name"></b> or your code <b id="shared-code" style="color:var(--brand2);font-size:18px"></b>. Share this on your flyers, WhatsApp and Instagram.</p></div>
         <p class="muted">Voice agent: <span id="voice-status"></span> <button id="sync" style="margin-left:8px">Re-sync voice agent</button></p></div>
-      <div class="card"><h3>5. Connect AI assistants (MCP)</h3>
+      <div class="card"><h3>3. Connect AI assistants (MCP)</h3>
         <p class="muted">Run your shop from Claude, ChatGPT or Cursor: "How much did I make today?", "Mark order 12 ready", "Jollof is finished". Create a key, then add Orderly as an MCP server in your assistant.</p>
         <button type="button" class="primary" id="mcpBtn">Create MCP key</button>
         <div id="mcpOut" hidden style="margin-top:14px;display:grid;gap:10px">
@@ -109,7 +134,7 @@ function renderMe() {
 // Banner only while something is missing: menu items, bank account, or a phone line.
 async function renderBanner() {
   const menu = await api('/api/me/menu').catch(() => []);
-  const todo = [!menu.length && 'add your menu', !me.payout && 'add your bank account', !me.phoneNumber && !me.sharedNumber && 'get a phone number'].filter(Boolean);
+  const todo = [!menu.length && 'add your menu', !me.payout && 'add your bank account'].filter(Boolean);
   const go = t => `<a href="#" onclick="document.querySelector('[data-tab=${t}]').click();return false">`;
   $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.map(x => x === 'add your menu' ? go('menu') + x + '</a>' : go('settings') + x + '</a>').join(', ')}.</div>` : '';
 }
@@ -146,8 +171,11 @@ async function loadOrders() {
     <td>${o.state.items.map(i => `${i.qty} × ${esc(i.name)}`).join('<br>') || '<span class="muted">empty</span>'}</td>
     <td>${naira(o.state.items.reduce((s, i) => s + i.priceKobo * i.qty, 0))}</td>
     <td><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></td>
-    <td>${o.status === 'paid' ? `<select data-order="${o.id}">${['new', 'preparing', 'ready', 'delivered'].map(f => `<option ${f === o.fulfilment ? 'selected' : ''}>${f}</option>`).join('')}</select>` : '<span class="muted">—</span>'}</td>
+    <td>${o.status === 'paid' ? `<select data-order="${o.id}">${['new', 'preparing', 'ready', 'delivered'].map(f => `<option ${f === o.fulfilment ? 'selected' : ''}>${f}</option>`).join('')}</select> <button data-receipt="${o.id}" style="margin-left:6px;padding:8px 12px">Receipt</button>` : '<span class="muted">—</span>'}</td>
     <td class="muted">${new Date(o.updated_at).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No orders yet.</td></tr>';
+  document.querySelectorAll('[data-receipt]').forEach(b => b.onclick = async () => {
+    try { const { url } = await api('/api/me/orders/' + b.dataset.receipt + '/receipt'); window.open(url, '_blank'); } catch (e) { toast(e.message, 'error'); }
+  });
   document.querySelectorAll('[data-order]').forEach(s => s.onchange = () => api('/api/me/orders/' + s.dataset.order, { method: 'PATCH', body: JSON.stringify({ fulfilment: s.value }) }));
 }
 async function loadMenu() {
@@ -164,6 +192,34 @@ async function loadMenu() {
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (await confirmModal({ title: 'Delete this item?', message: 'Customers will no longer be able to order it. This cannot be undone.', ok: 'Delete', danger: true })) { await api('/api/me/menu/' + b.dataset.del, { method: 'DELETE' }); loadMenu(); } });
 }
 $('#add-item').onsubmit = guard(async e => { await api('/api/me/menu', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); toast(`${e.target.name.value} added to your menu`); e.target.reset(); loadMenu(); renderBanner(); });
+const BSTAT = ['booked', 'completed', 'cancelled', 'no_show'];
+async function loadBookings() {
+  const rows = await api('/api/me/bookings');
+  $('#book-body').innerHTML = rows.map(b => `<tr><td>${new Date(b.starts_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</td>
+    <td>${esc(b.customer_name)}<div class="muted" style="font-size:12.5px">${esc(b.customer_phone || '')}</div></td><td>${esc(b.service)}</td><td>${b.amount_kobo ? naira(b.amount_kobo) : '—'}</td>
+    <td><select data-bstat="${b.id}">${BSTAT.map(s => `<option value="${s}" ${s === b.status ? 'selected' : ''}>${s.replace('_', ' ')}</option>`).join('')}</select></td>
+    <td><button data-bdel="${b.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">No bookings yet.</td></tr>';
+  document.querySelectorAll('[data-bstat]').forEach(s => s.onchange = () => api('/api/me/bookings/' + s.dataset.bstat, { method: 'PATCH', body: JSON.stringify({ status: s.value }) }).then(() => toast('Booking updated'), e => toast(e.message, 'error')));
+  document.querySelectorAll('[data-bdel]').forEach(b => b.onclick = async () => { if (await confirmModal({ title: 'Delete this booking?', ok: 'Delete', danger: true })) { await api('/api/me/bookings/' + b.dataset.bdel, { method: 'DELETE' }); toast('Booking deleted'); loadBookings(); } });
+}
+$('#f-book').onsubmit = guard(async e => { const f = Object.fromEntries(new FormData(e.target)); f.startsAt = new Date(f.startsAt).toISOString(); await api('/api/me/bookings', { method: 'POST', body: JSON.stringify(f) }); e.target.reset(); toast('Booking added'); loadBookings(); });
+async function loadMoney() {
+  const days = $('#mDays').value;
+  const [a, tx] = await Promise.all([api('/api/me/accounting?days=' + days), api('/api/me/transactions?days=' + days)]);
+  $('#m-in').textContent = naira(a.incomeKobo); $('#m-out').textContent = naira(a.expensesKobo);
+  $('#m-net').textContent = naira(a.netKobo); $('#m-net').style.color = a.netKobo < 0 ? '#ff4d2e' : ''; $('#m-orders').textContent = a.orders.count;
+  const max = Math.max(1, ...a.daily.map(d => Math.max(d.income, d.expense)));
+  $('#m-chart').innerHTML = a.daily.slice(-60).map(d => `<div title="${new Date(d.day).toDateString()}: in ${naira(d.income)}, out ${naira(d.expense)}" style="flex:1;display:flex;gap:1px;align-items:flex-end;height:100%">
+    <div style="flex:1;height:${d.income / max * 100}%;min-height:${d.income ? 2 : 0}px;background:var(--brand);border-radius:3px 3px 0 0"></div>
+    <div style="flex:1;height:${d.expense / max * 100}%;min-height:${d.expense ? 2 : 0}px;background:#ff4d2e;border-radius:3px 3px 0 0"></div></div>`).join('');
+  $('#m-cats').innerHTML = a.expensesByCategory.map(c => `<div class="row" style="justify-content:space-between;padding:6px 0"><span>${esc(c.category)}</span><b>${naira(c.kobo)}</b></div>`).join('') || 'No expenses recorded.';
+  $('#tx-body').innerHTML = tx.map(t => `<tr><td>${new Date(t.occurred_on).toLocaleDateString()}</td><td><span class="pill ${t.kind === 'income' ? 'paid' : 'cancelled'}">${t.kind}</span></td>
+    <td>${esc(t.category)}</td><td class="muted">${esc(t.note || '')}</td><td>${t.kind === 'expense' ? '−' : ''}${naira(t.amount_kobo)}</td><td><button data-tdel="${t.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">No manual entries yet. Paid orders are counted automatically.</td></tr>';
+  document.querySelectorAll('[data-tdel]').forEach(b => b.onclick = async () => { if (await confirmModal({ title: 'Delete this entry?', ok: 'Delete', danger: true })) { await api('/api/me/transactions/' + b.dataset.tdel, { method: 'DELETE' }); toast('Entry deleted'); loadMoney(); } });
+}
+$('#mDays').onchange = () => loadMoney();
+$('#f-tx').onsubmit = guard(async e => { await api('/api/me/transactions', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); toast('Saved'); loadMoney(); });
+
 async function loadTranscripts() {
   const rows = await api('/api/me/transcripts');
   $('#tx-list').innerHTML = rows.map(t => `<details class="card"><summary><b>${esc(t.customer_phone || (t.call_id.startsWith('web_') ? 'Web order' : 'Caller'))}</b>
@@ -171,7 +227,7 @@ async function loadTranscripts() {
     ${t.recording_url ? `<audio controls src="${esc(t.recording_url)}" style="width:100%;margin:8px 0"></audio>` : ''}
     <pre>${esc(t.transcript || '(empty)')}</pre></details>`).join('') || '<p class="muted">No calls yet.</p>';
 }
-const load = () => ({ orders: loadOrders, menu: loadMenu, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
+const load = () => ({ orders: loadOrders, menu: loadMenu, bookings: loadBookings, money: loadMoney, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
 loadMe().then(load);
 const flash = store.get('orderly_flash'); if (flash) { toast(flash); store.set('orderly_flash', null); }
 setInterval(() => tab === 'orders' && load(), 5000);
