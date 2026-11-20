@@ -21,7 +21,7 @@ node -e '
 const fs = require("fs");
 const env = Object.fromEntries(fs.readFileSync(".env", "utf8").split(/\r?\n/).filter(l => /^[A-Z_]+=/.test(l)).map(l => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).trim()]));
 if (!env.PROD_DATABASE_URL) { console.error("PROD_DATABASE_URL missing in .env"); process.exit(1); }
-const keep = ["APP_SECRET","GOOGLE_CLIENT_ID","GMAIL_USER","GMAIL_APP_PASSWORD","SHARED_PHONE_NUMBER","PAYSTACK_SECRET_KEY","RESEND_API_KEY","EMAIL_FROM","PLATFORM_FEE_PERCENT","OPENROUTER_API_KEY","OPENROUTER_MODEL","VAPI_API_KEY","VAPI_PUBLIC_KEY","VAPI_SECRET","FRONTEND_URL","SMS_WEBHOOK_URL","SMS_API_KEY","CUSTOMER_EMAIL_DOMAIN"];
+const keep = ["APP_SECRET","MEDIA_BUCKET","GOOGLE_CLIENT_ID","GMAIL_USER","GMAIL_APP_PASSWORD","SHARED_PHONE_NUMBER","PAYSTACK_SECRET_KEY","RESEND_API_KEY","EMAIL_FROM","PLATFORM_FEE_PERCENT","OPENROUTER_API_KEY","OPENROUTER_MODEL","VAPI_API_KEY","VAPI_PUBLIC_KEY","VAPI_SECRET","FRONTEND_URL","SMS_WEBHOOK_URL","SMS_API_KEY","CUSTOMER_EMAIL_DOMAIN"];
 const vars = { NODE_ENV: "production", DATABASE_URL: env.PROD_DATABASE_URL };
 for (const k of keep) if (env[k]) vars[k] = env[k];
 fs.writeFileSync(".build/env.json", JSON.stringify({ Variables: vars }));

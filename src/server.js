@@ -14,6 +14,7 @@ const { runAgent, runRouter } = require('./agent');
 const { forSpeech } = require('./speech');
 const mcp = require('./mcp');
 const books = require('./books');
+const media = require('./media');
 
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -257,6 +258,13 @@ me.get('/orders/:id/receipt', wrap(async (req, res) => {
   res.json({ url: `${origin}/receipt.html?r=${books.receiptToken(+req.params.id)}` });
 }));
 
+// ---------- Showcase media ----------
+me.get('/media', wrap(async (req, res) => res.json(await media.list(req.businessId))));
+me.post('/media/upload-url', wrap(async (req, res) => res.json(await media.uploadUrl(req.businessId, req.body || {}))));
+me.post('/media', wrap(async (req, res) => res.json(await media.register(req.businessId, req.body || {}))));
+me.patch('/media/:id', wrap(async (req, res) => res.json(await media.update(req.businessId, +req.params.id, req.body || {}))));
+me.delete('/media/:id', wrap(async (req, res) => { await media.remove(req.businessId, +req.params.id); res.json({ ok: true }); }));
+
 me.get('/orders', wrap(async (req, res) => { await reconcile(req.businessId); res.json(await store.listOrders(req.businessId)); }));
 me.patch('/orders/:id', wrap(async (req, res) => {
   try { await store.setFulfilment(req.businessId, +req.params.id, req.body?.fulfilment); }
@@ -315,6 +323,7 @@ app.get('/api/public/:businessId', wrap(async (req, res) => {
     name: b.name, phoneNumber: b.phone_number,
     vapiPublicKey: process.env.VAPI_PUBLIC_KEY || null, vapiAssistantId: b.vapi_assistant_id,
     menu: (await store.getMenu(b.id)).filter(m => m.available),
+    media: await media.list(b.id, true),
   });
 }));
 

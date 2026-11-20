@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Orderly Dashboard</title><link rel="stylesheet" href="style.css">
+<title>Orderly Dashboard</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0a0d0b"><link rel="stylesheet" href="style.css">
 <style>.setup{display:grid;gap:14px}.setup h3{margin:0 0 8px}.ok{font-weight:600}</style></head>
 <body class="app">
 <header><h1><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span><span id="bizName">Orderly</span></h1>
@@ -11,6 +11,7 @@
     <button data-tab="bookings"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Bookings</button>
     <button data-tab="money"><svg viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M16 13h2M3 10h18"/></svg>Money</button>
     <button data-tab="accounts"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Accounts</button>
+    <button data-tab="showcase"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M10 8l6 4-6 4z"/></svg>Showcase</button>
     <button data-tab="transcripts"><svg viewBox="0 0 24 24"><path d="M3 12h2l2-6 4 12 3-9 2 3h5"/></svg>Calls</button>
     <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Setup</button>
     <a class="btn primary" id="orderLink" target="_blank">Test ordering</a><button id="logout">Log out</button></nav></header>
@@ -61,6 +62,13 @@
       <input name="category" placeholder="Category (e.g. Rent, Stock, Salary)" list="cats"><datalist id="cats"><option>Stock</option><option>Rent</option><option>Salary</option><option>Transport</option><option>Utilities</option><option>Marketing</option><option>Cash sale</option></datalist>
       <input name="note" placeholder="Note (optional)"><input name="occurredOn" type="date"><button class="primary">Save</button></form></div>
     <div class="card table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Note</th><th>Amount</th><th></th></tr></thead><tbody id="tx-body"></tbody></table></div>
+  </section>
+  <section id="showcase" hidden>
+    <h2 class="page-title">Showcase</h2><p class="page-sub">Photos and videos of your products and services. Visible ones play as reels on your customer page.</p>
+    <div class="card"><label class="btn primary" style="cursor:pointer">＋ Upload photos or videos<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" multiple hidden></label>
+      <span class="muted" style="margin-left:10px;font-size:13px">Photos up to 10 MB, videos up to 60 MB. Vertical videos look best.</span>
+      <div id="upProg" class="muted" style="margin-top:10px"></div></div>
+    <div id="mediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px"></div>
   </section>
   <section id="transcripts" hidden><h2 class="page-title">Calls</h2><p class="page-sub">Recordings and transcripts of every conversation.</p><div id="tx-list"></div></section>
   <section id="settings" hidden>
@@ -231,6 +239,33 @@ async function loadAccounts() {
 $('#aDays').onchange = () => loadAccounts();
 $('#f-tx').onsubmit = guard(async e => { await api('/api/me/transactions', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); e.target.reset(); toast('Saved'); loadAccounts(); });
 
+async function loadMedia() {
+  const items = await api('/api/me/media');
+  $('#mediaGrid').innerHTML = items.map(m => `<div class="card" style="padding:10px;margin:0">
+    <div style="aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000;opacity:${m.visible ? 1 : .4}">
+      ${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : `<img src="${m.url}" loading="lazy" style="width:100%;height:100%;object-fit:cover" alt="">`}</div>
+    <input value="${esc(m.caption || '')}" data-mcap="${m.id}" placeholder="Caption" maxlength="140" style="width:100%;margin-top:8px;padding:8px 10px;font-size:13px">
+    <div class="row" style="justify-content:space-between;margin-top:8px"><label class="row" style="gap:6px;font-size:13px"><input type="checkbox" data-mvis="${m.id}" ${m.visible ? 'checked' : ''}> Visible</label>
+      <button data-mdel="${m.id}" style="padding:7px 10px;font-size:13px">Delete</button></div></div>`).join('') || '<p class="muted">No photos or videos yet. Upload some to show customers what you offer.</p>';
+  document.querySelectorAll('[data-mvis]').forEach(c => c.onchange = () => api('/api/me/media/' + c.dataset.mvis, { method: 'PATCH', body: JSON.stringify({ visible: c.checked }) })
+    .then(() => { toast(c.checked ? 'Now visible on your customer page' : 'Hidden from your customer page'); loadMedia(); }, e => toast(e.message, 'error')));
+  document.querySelectorAll('[data-mcap]').forEach(i => i.onchange = () => api('/api/me/media/' + i.dataset.mcap, { method: 'PATCH', body: JSON.stringify({ caption: i.value }) }).then(() => toast('Caption saved'), e => toast(e.message, 'error')));
+  document.querySelectorAll('[data-mdel]').forEach(b => b.onclick = async () => { if (await confirmModal({ title: 'Delete this item?', message: 'It will be removed from your customer page.', ok: 'Delete', danger: true })) { await api('/api/me/media/' + b.dataset.mdel, { method: 'DELETE' }); toast('Deleted'); loadMedia(); } });
+}
+$('#mediaFile').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  for (const [i, f] of files.entries()) {
+    $('#upProg').textContent = `Uploading ${i + 1} of ${files.length}: ${f.name}…`;
+    try {
+      const { uploadUrl, key, kind } = await api('/api/me/media/upload-url', { method: 'POST', body: JSON.stringify({ contentType: f.type, size: f.size }) });
+      const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': f.type }, body: f });
+      if (!up.ok) throw new Error('Upload failed. Please try again.');
+      await api('/api/me/media', { method: 'POST', body: JSON.stringify({ key, kind }) });
+      toast(`${f.name} uploaded`);
+    } catch (err) { toast(`${f.name}: ${err.message}`, 'error'); }
+  }
+  $('#upProg').textContent = ''; loadMedia();
+};
 async function loadTranscripts() {
   const rows = await api('/api/me/transcripts');
   $('#tx-list').innerHTML = rows.map(t => `<details class="card"><summary><b>${esc(t.customer_phone || (t.call_id.startsWith('web_') ? 'Web order' : 'Caller'))}</b>
@@ -238,7 +273,7 @@ async function loadTranscripts() {
     ${t.recording_url ? `<audio controls src="${esc(t.recording_url)}" style="width:100%;margin:8px 0"></audio>` : ''}
     <pre>${esc(t.transcript || '(empty)')}</pre></details>`).join('') || '<p class="muted">No calls yet.</p>';
 }
-const load = () => ({ orders: loadOrders, menu: loadMenu, bookings: loadBookings, money: loadMoney, accounts: loadAccounts, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
+const load = () => ({ orders: loadOrders, menu: loadMenu, bookings: loadBookings, money: loadMoney, accounts: loadAccounts, showcase: loadMedia, transcripts: loadTranscripts, settings: loadMe })[tab]().catch(e => console.error(e));
 loadMe().then(load);
 const flash = store.get('orderly_flash'); if (flash) { toast(flash); store.set('orderly_flash', null); }
 setInterval(() => tab === 'orders' && load(), 5000);

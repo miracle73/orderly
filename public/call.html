@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Orderly Test Call</title><link rel="stylesheet" href="style.css">
+<title>Orderly Test Call</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0a0d0b"><link rel="stylesheet" href="style.css">
 <style>
 header{max-width:1180px;margin:0 auto;padding:20px}header nav{align-items:center}header nav label{font-size:13px}
 .wrap{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}@media(max-width:860px){.wrap{grid-template-columns:1fr}header nav label.row{display:none}header{padding:14px 16px}header h1{font-size:18px}}
@@ -23,6 +23,11 @@ header{max-width:1180px;margin:0 auto;padding:20px}header nav{align-items:center
 <body>
 <header><h1><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span><span id="bname">Order</span></h1><nav><label class="row muted"><input type="checkbox" id="speak" checked> Speak replies</label>
 <label class="row muted"><input type="checkbox" id="showTools"> Show agent steps</label><button id="vapiBtn" class="primary" hidden>📞 Real call (Vapi)</button><button id="reset">New call</button></nav></header>
+<section id="reels" hidden style="max-width:1180px;margin:0 auto;padding:0 20px 6px">
+  <div style="display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px" id="reelRow"></div></section>
+<div id="reelView" hidden style="position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.92);display:grid;place-items:center" onclick="if(event.target===this)closeReel()">
+  <div style="position:relative;height:min(86vh,760px);aspect-ratio:9/16;max-width:94vw;border-radius:18px;overflow:hidden;background:#000" id="reelBox"></div>
+  <button onclick="closeReel()" style="position:absolute;top:16px;right:16px;border-radius:50%;width:44px;height:44px;padding:0;justify-content:center">✕</button></div>
 <main class="wrap">
   <div class="card chat"><div class="chathead"><div class="orb"></div><div><b>Orderly</b><div class="muted" style="font-size:13px">AI ordering assistant · replies instantly</div></div></div><div id="log"></div>
     <form id="f" class="row" style="margin-top:12px"><button type="button" id="mic" title="Hold a conversation by voice">🎤 Talk</button>
@@ -34,6 +39,25 @@ header{max-width:1180px;margin:0 auto;padding:20px}header nav{align-items:center
 <script>
 const BID = new URLSearchParams(location.search).get('b');
 window.bizInfo = BID ? fetch(API + '/api/public/' + BID).then(r => r.ok ? r.json() : Promise.reject(new Error('Business not found'))) : Promise.reject(new Error('Missing business link'));
+window.bizInfo.then(b => { renderReels(b.media || []); }, () => {});
+let reelItems = [];
+function renderReels(items) {
+  reelItems = items; if (!items.length) return;
+  $('#reels').hidden = false;
+  $('#reelRow').innerHTML = items.map((m, i) => `<button onclick="openReel(${i})" style="flex:0 0 auto;width:118px;aspect-ratio:9/16;padding:0;border-radius:16px;overflow:hidden;position:relative;scroll-snap-align:start;border:2px solid var(--brand);background:#000">
+    ${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline autoplay preload="metadata" style="width:100%;height:100%;object-fit:cover"></video>` : `<img src="${m.url}" loading="lazy" style="width:100%;height:100%;object-fit:cover" alt="">`}
+    ${m.caption ? `<span style="position:absolute;left:0;right:0;bottom:0;padding:18px 8px 8px;font-size:11.5px;text-align:left;white-space:normal;background:linear-gradient(transparent,rgba(0,0,0,.85))">${esc(m.caption)}</span>` : ''}</button>`).join('');
+}
+let reelIdx = 0;
+function openReel(i) {
+  reelIdx = (i + reelItems.length) % reelItems.length; const m = reelItems[reelIdx];
+  $('#reelBox').innerHTML = (m.kind === 'video' ? `<video src="${m.url}" autoplay playsinline controls style="width:100%;height:100%;object-fit:cover" onended="openReel(reelIdx+1)"></video>` : `<img src="${m.url}" style="width:100%;height:100%;object-fit:cover" alt="">`)
+    + (m.caption ? `<div style="position:absolute;left:0;right:0;bottom:0;padding:40px 16px 18px;background:linear-gradient(transparent,rgba(0,0,0,.85))">${esc(m.caption)}</div>` : '')
+    + '<div onclick="openReel(reelIdx-1)" style="position:absolute;left:0;top:0;bottom:60px;width:30%"></div><div onclick="openReel(reelIdx+1)" style="position:absolute;right:0;top:0;bottom:60px;width:30%"></div>';
+  $('#reelView').hidden = false;
+  if (m.kind === 'image') { clearTimeout(window._rt); window._rt = setTimeout(() => !$('#reelView').hidden && reelIdx === reelItems.indexOf(m) && openReel(reelIdx + 1), 5000); }
+}
+function closeReel() { $('#reelView').hidden = true; $('#reelBox').innerHTML = ''; clearTimeout(window._rt); }
 window.bizInfo.then(b => { $('#bname').textContent = b.name; document.title = b.name + ' Order'; }, e => { $('#log').innerHTML = `<p class="muted">${esc(e.message)}</p>`; $('#f').hidden = true; });
 let sessionId, messages, busy = false;
 function reset() {

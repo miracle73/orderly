@@ -114,3 +114,15 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS transactions_business_idx ON transactions (business_id, occurred_on DESC);
+
+-- v8: showcase media (photos/videos shown as reels on the customer page)
+CREATE TABLE IF NOT EXISTS media (
+  id SERIAL PRIMARY KEY,
+  business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  s3_key TEXT NOT NULL UNIQUE,
+  kind TEXT NOT NULL CHECK (kind IN ('image','video')),
+  caption TEXT,
+  visible BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS media_business_idx ON media (business_id, created_at DESC);
