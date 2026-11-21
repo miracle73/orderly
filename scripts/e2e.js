@@ -134,6 +134,21 @@ const created = { emails: [], phoneIds: [] };
   ok(acc.incomeKobo === 300000 && acc.expensesKobo === 120000 && acc.netKobo === 180000 && acc.daily.length === 7, 'accounting: in ₦3,000, out ₦1,200, profit ₦1,800', `net ₦${acc.netKobo / 100}`);
   ok((await req('/api/receipts/1.forgedsignatureforged12')).status === 404, 'forged receipt link rejected');
 
+  // --- Showcase media
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  ok((await req('/api/me/media/upload-url', { token: tA, body: { contentType: 'application/pdf', size: 10 } })).status === 400, 'non-media file type rejected');
+  const up = (await req('/api/me/media/upload-url', { token: tA, body: { contentType: 'image/png', size: png.length } })).body;
+  const put = await fetch(up.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/png' }, body: png });
+  ok(put.ok, 'photo uploads to storage', String(put.status));
+  const m = (await req('/api/me/media', { token: tA, body: { key: up.key, kind: up.kind, caption: 'Our best jollof' } })).body;
+  ok((await fetch(m.url)).ok, 'uploaded photo is publicly viewable');
+  ok((await req('/api/public/' + meA.id)).body.media?.some(x => x.id === m.id), 'visible photo shows on customer page');
+  await req('/api/me/media/' + m.id, { method: 'PATCH', token: tA, body: { visible: false } });
+  ok(!(await req('/api/public/' + meA.id)).body.media?.some(x => x.id === m.id), 'hidden photo disappears from customer page');
+  ok((await req('/api/me/media', { token: tA, body: { key: 'media/someone-else/x.png', kind: 'image' } })).status === 400, "can't register another business's file");
+  await req('/api/me/media/' + m.id, { method: 'DELETE', token: tA });
+  ok((await req('/api/me/media', { token: tA })).body.length === 0, 'delete photo');
+
   // --- MCP server
   const mk = (await req('/api/me/mcp-key', { token: tA, body: {} })).body;
   ok(/^ord_/.test(mk.key || '') && mk.url.endsWith('/mcp'), 'create MCP key');
