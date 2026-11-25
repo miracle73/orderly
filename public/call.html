@@ -59,6 +59,33 @@ body{background:radial-gradient(70% 45% at 85% -5%,rgba(255,122,26,.28),transpar
 .empty{text-align:center;padding:18px 0;color:var(--muted)}.empty div{font-size:34px;margin-bottom:6px}
 .settings{margin-top:14px;font-size:13px;color:var(--muted)}.settings summary{cursor:pointer}.settings label{display:flex;gap:8px;align-items:center;margin-top:8px}
 @media(max-width:880px){#log{height:48vh}.ordercard{position:static}.reel{width:112px}}
+
+/* Our work carousel */
+.reels-wrap{position:relative;margin-bottom:26px}
+#reelRow{gap:16px;padding:4px 4px 14px;scrollbar-width:none}#reelRow::-webkit-scrollbar{display:none}
+.reel{width:210px;border-radius:22px;box-shadow:0 18px 40px -14px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.08)}
+.reel:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 26px 50px -14px rgba(255,122,26,.45),0 0 0 2px var(--brand)}
+.reel .cap{font-size:13px;padding:34px 12px 12px;font-weight:500}
+.reel .play{width:34px;height:34px;font-size:12px;top:10px;right:10px;backdrop-filter:blur(6px)}
+.arrows{display:flex;gap:8px}.arrows button{width:40px;height:40px;border-radius:50%;padding:0;justify-content:center;font-size:18px}
+@media(max-width:880px){.reel{width:62vw;max-width:240px}}
+/* Chat drawer */
+.fab{position:fixed;right:22px;bottom:22px;z-index:60;padding:16px 22px;border-radius:99px;font-size:16px;box-shadow:0 16px 40px -10px rgba(255,122,26,.8)}
+.fab .badge{background:var(--brand-ink);color:var(--brand2);border-radius:99px;padding:2px 8px;font-size:12px;margin-left:4px}
+.scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:.3s}
+.drawer{position:fixed;top:12px;right:12px;bottom:12px;width:min(460px,calc(100vw - 24px));z-index:80;display:flex;flex-direction:column;border-radius:26px;overflow:hidden;
+  background:radial-gradient(80% 40% at 100% 0%,rgba(255,122,26,.22),transparent 70%),#111612;border:1px solid rgba(255,122,26,.3);box-shadow:0 40px 90px rgba(0,0,0,.7);
+  transform:translateX(110%);transition:transform .45s cubic-bezier(.2,.9,.2,1)}
+body.chat-open .drawer{transform:none}body.chat-open .scrim{opacity:1;pointer-events:auto}body.chat-open .fab{opacity:0;pointer-events:none}
+.dhead{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.dhead h3{margin:0;font-size:19px}.dhead .x{margin-left:auto;width:40px;height:40px;border-radius:50%;padding:0;justify-content:center}
+.basket{margin:14px 16px 0;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg,rgba(255,122,26,.16),rgba(255,255,255,.03));border:1px solid rgba(255,122,26,.25)}
+.basket h4{margin:0 0 6px;font:700 15px var(--display);display:flex;justify-content:space-between}
+#order .row{padding:5px 0;font-size:14.5px}#order .empty{padding:6px 0;text-align:left;display:flex;gap:10px;align-items:center}#order .empty div{font-size:24px;margin:0}
+#pay{padding:13px;font-size:15px;margin-top:10px}
+.drawer #log{flex:1;height:auto;min-height:0;padding:16px}
+.drawer .chips{padding:0 16px 10px}.drawer #f{padding:12px}
+@media(max-width:620px){.drawer{top:auto;left:0;right:0;bottom:0;width:100%;height:92vh;border-radius:26px 26px 0 0;transform:translateY(105%)}.fab{left:16px;right:16px;justify-content:center}}
 </style></head>
 <body><div class="shell">
 <div class="top"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>
@@ -67,22 +94,26 @@ body{background:radial-gradient(70% 45% at 85% -5%,rgba(255,122,26,.28),transpar
 <section class="cover" id="cover"><div class="art" id="art"><span style="left:68%;top:14%">🛍️</span><span style="left:84%;top:40%;animation-delay:-2s">✨</span><span style="left:58%;top:46%;animation-delay:-4s;font-size:36px">🧡</span></div><div class="media" id="coverMedia"></div>
   <div class="inner"><div class="avatar" id="avatar">·</div>
     <div><h1 id="htitle">Welcome</h1><p id="htag">Order, book or ask anything. Our AI assistant replies instantly, day or night, and you pay securely with Paystack.</p></div>
-    <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><a class="btn" href="#chat">💬 Chat to order</a></div></div></section>
+    <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><button type="button" id="chatBtn">💬 Chat to order</button></div></div></section>
 <section class="trust"><div><i>⚡</i><span><b>Instant replies</b>No waiting on hold</span></div><div><i>🔒</i><span><b>Secure payment</b>Protected by Paystack</span></div>
   <div><i>🧾</i><span><b>Instant receipt</b>For every paid order</span></div><div><i>🌙</i><span><b>Open 24/7</b>Order any time</span></div></section>
 
-<section id="reels" hidden><div class="sec-h"><h2>Our work</h2><span class="muted" style="font-size:13px">Tap to watch</span></div><div id="reelRow"></div></section>
+<section id="reels" hidden class="reels-wrap"><div class="sec-h"><div><h2>Our work ✨</h2><span class="muted" style="font-size:13px">Swipe through and tap to watch</span></div>
+  <div class="arrows"><button type="button" onclick="slideReels(-1)" aria-label="Previous">‹</button><button type="button" onclick="slideReels(1)" aria-label="Next">›</button></div></div><div id="reelRow"></div></section>
 <section id="menuSec" hidden><div class="sec-h"><h2>Menu &amp; prices</h2><span class="muted" style="font-size:13px">Tap + to add</span></div><div class="menu" id="menu"></div></section>
 
-<main class="wrap" id="chat">
-  <div class="card chat"><div class="chathead"><div class="orb" id="orb"></div><div><b id="aname">Assistant</b><div class="muted" style="font-size:13px" id="astatus">Online · replies instantly</div></div></div>
-    <div id="log"></div>
-    <div class="chips" id="chips"><button data-q="What do you have?">What do you have?</button><button data-q="How much is delivery?">Delivery?</button><button data-q="I want to book an appointment">Book a visit</button></div>
-    <form id="f" class="row"><button type="button" id="mic" title="Talk instead of typing">🎤 Talk</button>
-      <input id="text" placeholder="Type your order…" autocomplete="off"><button class="primary">Send</button></form></div>
-  <div class="card ordercard"><h3>Your order</h3><div id="order"></div>
-    <details class="settings"><summary>Settings</summary><label><input type="checkbox" id="speak" checked> Read replies aloud</label><label><input type="checkbox" id="showTools"> Show assistant steps</label></details></div>
-</main></div>
+</div>
+<button class="primary fab" id="fab" type="button">💬 Chat to order <span class="badge" id="fabCount" hidden></span></button>
+<div class="scrim" onclick="closeChat()"></div>
+<aside class="drawer" id="chat" aria-label="Your order">
+  <div class="dhead"><div class="orb" id="orb"></div><div><h3>Your order 🧡</h3><div class="muted" style="font-size:13px" id="astatus">We're here · replies instantly</div></div>
+    <button class="x" type="button" onclick="closeChat()" aria-label="Close">✕</button></div>
+  <div class="basket"><h4><span>In your basket</span><span id="aname" class="muted" style="font-weight:500;font-size:12.5px"></span></h4><div id="order"></div></div>
+  <div id="log"></div>
+  <div class="chips" id="chips"><button data-q="What do you have?">What do you have?</button><button data-q="How much is delivery?">Delivery?</button><button data-q="I want to book an appointment">Book a visit</button></div>
+  <form id="f" class="row"><button type="button" id="mic" title="Talk instead of typing">🎤</button><input id="text" placeholder="Tell us what you'd like…" autocomplete="off"><button class="primary">Send</button></form>
+  <details class="settings" style="padding:0 16px 12px"><summary>Settings</summary><label><input type="checkbox" id="speak"> Read replies aloud</label><label><input type="checkbox" id="showTools"> Show assistant steps</label></details>
+</aside>
 
 <div id="reelView" hidden style="position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:grid;place-items:center" onclick="if(event.target===this)closeReel()">
   <div style="position:relative;height:min(86vh,760px);aspect-ratio:9/16;max-width:94vw;border-radius:18px;overflow:hidden;background:#000" id="reelBox"></div>
@@ -93,8 +124,12 @@ body{background:radial-gradient(70% 45% at 85% -5%,rgba(255,122,26,.28),transpar
 const BID = new URLSearchParams(location.search).get('b');
 window.bizInfo = BID ? fetch(API + '/api/public/' + BID).then(r => r.ok ? r.json() : Promise.reject(new Error('Business not found'))) : Promise.reject(new Error('Missing business link'));
 let sessionId, messages, busy = false;
+function openChat() { document.body.classList.add('chat-open'); setTimeout(() => $('#text').focus(), 350); }
+function closeChat() { document.body.classList.remove('chat-open'); }
+function slideReels(dir) { const r = $('#reelRow'); r.scrollBy({ left: dir * (r.firstElementChild?.offsetWidth + 16 || 220) * 2, behavior: 'smooth' }); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#reelView').hidden) closeChat(); });
 window.bizInfo.then(b => {
-  document.title = b.name; $('#bname').textContent = b.name; $('#htitle').textContent = b.name; $('#aname').textContent = `${b.name} assistant`;
+  document.title = b.name; $('#bname').textContent = b.name; $('#htitle').textContent = b.name; $('#aname').textContent = b.name;
   $('#avatar').textContent = b.name.trim()[0].toUpperCase();
   renderReels(b.media || []);
   const cover = (b.media || []).find(m => m.kind === 'image') || (b.media || [])[0];
@@ -103,14 +138,14 @@ window.bizInfo.then(b => {
   if (b.menu?.length) {
     $('#menuSec').hidden = false;
     $('#menu').innerHTML = b.menu.map(m => `<div class="item"><div><b>${esc(m.name)}</b><span>${naira(m.priceKobo)}</span></div><button data-add="${esc(m.name)}" aria-label="Add ${esc(m.name)}">+</button></div>`).join('');
-    document.querySelectorAll('[data-add]').forEach(x => x.onclick = () => { send(`I'd like one ${x.dataset.add}`); $('#chat').scrollIntoView({ behavior: 'smooth' }); });
+    document.querySelectorAll('[data-add]').forEach(x => x.onclick = () => { openChat(); send(`I'd like one ${x.dataset.add}`); });
   }
 }, e => { $('#bname').textContent = 'Orderly'; $('#log').innerHTML = `<p class="muted">${esc(e.message)}</p>`; $('#f').hidden = true; });
 
 function reset() {
   sessionId = crypto.randomUUID().replace(/-/g, ''); messages = [];
   $('#log').innerHTML = ''; renderOrder(null);
-  add('assistant', "Hello! 👋 What would you like today? You can tap + on the menu, type, or press Talk.");
+  add('assistant', "Hi there! 👋 Welcome. What can we get for you today?");
 }
 // Most natural voice the device offers (Edge/Chrome "Natural"/"Online" voices sound far better than defaults).
 let voice;
@@ -125,6 +160,7 @@ function add(role, text) {
   const d = document.createElement('div'); d.className = 'msg ' + role;
   d.innerHTML = esc(text).replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '$2').replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener">Pay securely →</a>');
   $('#log').append(d); $('#log').scrollTop = 1e9;
+  if (role === 'assistant' && $('#speak').checked && !document.body.classList.contains('chat-open')) return;
   if (role === 'assistant' && $('#speak').checked && 'speechSynthesis' in window) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/https?:\/\/\S+/g, 'the payment link').replace(/₦\s?([\d,]+)/g, '$1 naira'));
@@ -133,7 +169,8 @@ function add(role, text) {
   } else if (role === 'assistant' && voiceMode) listen();
 }
 function renderOrder(o) {
-  if (!o || !o.items.length) { $('#order').innerHTML = '<div class="empty"><div>🛍️</div>Nothing yet. Add something from the menu or tell the assistant.</div>'; return; }
+  const n = o?.items?.reduce((s, i) => s + i.qty, 0) || 0; $('#fabCount').hidden = !n; $('#fabCount').textContent = n;
+  if (!o || !o.items.length) { $('#order').innerHTML = '<div class="empty"><div>🛍️</div><span class="muted">Empty for now. Tap + on the menu or just tell us what you would like.</span></div>'; return; }
   $('#order').innerHTML = o.items.map(i => `<div class="row" style="justify-content:space-between"><span>${i.qty} × ${esc(i.name)}</span><span>${naira(i.qty * i.priceKobo)}</span></div>`).join('')
     + `<hr style="border:0;border-top:1px dashed var(--line)"><div class="row" style="justify-content:space-between;font-size:18px"><b>Total</b><b>${naira(o.items.reduce((s, i) => s + i.qty * i.priceKobo, 0))}</b></div>
     <p><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></p>${o.paymentUrl ? `<a id="pay" class="btn primary" href="${o.paymentUrl}" target="_blank" rel="noopener">Pay now</a>` : ''}`;
@@ -152,6 +189,7 @@ async function send(text) {
   } catch (e) { t.remove(); toast(e.message, 'error'); }
   busy = false;
 }
+$('#chatBtn').onclick = openChat; $('#fab').onclick = openChat;
 $('#f').onsubmit = e => { e.preventDefault(); send($('#text').value); };
 document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => send(b.dataset.q));
 $('#reset').onclick = () => { stopVoice(); reset(); $('#chips').hidden = false; };
@@ -200,7 +238,7 @@ if (cfg.key && cfg.id) {
   const showOrder = async () => { if (!callId) return; const o = await fetch(API + '/api/order/' + callId).then(r => r.json()).catch(() => null); if (o) window._renderOrder(o); };
   btn.onclick = async () => {
     if (active) return vapi.stop();
-    window._stopVoice(); window._resetLog(); btn.textContent = 'Connecting…';
+    window._stopVoice(); window._resetLog(); openChat(); btn.textContent = 'Connecting…';
     try { const call = await vapi.start(cfg.id); callId = call?.id; }
     catch (e) { btn.textContent = '📞 Talk to us'; toast(e.message || 'Could not start the call', 'error'); }
   };
