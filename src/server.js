@@ -272,6 +272,12 @@ me.patch('/orders/:id', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 me.get('/transcripts', wrap(async (req, res) => res.json(await store.listTranscripts(req.businessId))));
+// Keep the voice assistant's listening vocabulary in sync with the menu.
+async function resyncVoice(bid, req) {
+  try { const b = await store.getBusiness(bid); if (b?.vapi_assistant_id) await vapi.syncAssistant(b, baseUrl(req), (await store.getMenu(bid)).map(m => m.name)); }
+  catch (e) { console.error('voice resync', e.message); }
+}
+
 me.get('/menu', wrap(async (req, res) => res.json(await store.getMenu(req.businessId))));
 me.post('/menu', wrap(async (req, res) => {
   const { name, aliases, priceNaira } = req.body || {};
@@ -280,6 +286,7 @@ me.post('/menu', wrap(async (req, res) => {
       name, priceKobo: kobo(priceNaira), aliases: String(aliases || '').split(',').map(s => s.trim()).filter(Boolean),
     });
   } catch (e) { throw httpError(400, e.code === '23505' ? 'That item already exists' : e.message); }
+  await resyncVoice(req.businessId, req);
   res.json({ ok: true });
 }));
 me.patch('/menu/:id', wrap(async (req, res) => {
@@ -290,9 +297,10 @@ me.patch('/menu/:id', wrap(async (req, res) => {
       aliases: aliases === undefined ? undefined : String(aliases).split(',').map(s => s.trim()).filter(Boolean),
     });
   } catch (e) { throw httpError(400, e.code === '23505' ? 'Another item already has that name' : e.message); }
+  await resyncVoice(req.businessId, req);
   res.json({ ok: true });
 }));
-me.delete('/menu/:id', wrap(async (req, res) => { await store.deleteMenuItem(req.businessId, +req.params.id); res.json({ ok: true }); }));
+me.delete('/menu/:id', wrap(async (req, res) => { await store.deleteMenuItem(req.businessId, +req.params.id); await resyncVoice(req.businessId, req); res.json({ ok: true }); }));
 app.use('/api/me', me);
 
 // ---------- MCP server (Streamable HTTP, stateless) ----------

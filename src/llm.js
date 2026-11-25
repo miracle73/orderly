@@ -9,7 +9,7 @@ async function chat(messages, tools) {
     },
     body: JSON.stringify({
       model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
-      messages, tools, tool_choice: 'auto', temperature: 0.3, max_tokens: 300,
+      messages, tools, tool_choice: 'auto', temperature: 0.3, max_tokens: 220,
     }),
   });
   const body = await res.json();

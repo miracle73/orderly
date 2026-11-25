@@ -1,150 +1,190 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Orderly Test Call</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0a0d0b"><link rel="stylesheet" href="style.css">
+<title>Order</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><meta name="theme-color" content="#0a0d0b"><link rel="stylesheet" href="style.css">
 <style>
-header{max-width:1180px;margin:0 auto;padding:20px}header nav{align-items:center}header nav label{font-size:13px}
-.wrap{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}@media(max-width:860px){.wrap{grid-template-columns:1fr}header nav label.row{display:none}header{padding:14px 16px}header h1{font-size:18px}}
-.chat{padding:0;overflow:hidden}
+body{background:radial-gradient(70% 45% at 85% -5%,rgba(255,122,26,.28),transparent 70%),radial-gradient(50% 35% at 0% 30%,rgba(61,220,151,.08),transparent 70%),var(--bg)}
+.shell{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:22px}.top .name{font:700 18px var(--display)}.top .sp{margin-left:auto}
+.open{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--mint);background:rgba(61,220,151,.12);padding:5px 10px;border-radius:99px}
+.open::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px rgba(61,220,151,.2)}
+.hero{display:flex;gap:22px;align-items:center;padding:26px;border-radius:26px;background:linear-gradient(135deg,rgba(255,122,26,.18),rgba(255,255,255,.03) 55%);border:1px solid rgba(255,122,26,.25);margin-bottom:22px;flex-wrap:wrap}
+.avatar{width:88px;height:88px;border-radius:26px;display:grid;place-items:center;font:800 40px var(--display);color:var(--brand-ink);background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 14px 40px -10px rgba(255,122,26,.7);flex:none}
+.hero h1{font:800 clamp(28px,4vw,42px)/1.05 var(--display);margin:0 0 8px}.hero p{margin:0;color:#cfc8bc;max-width:520px;line-height:1.55}
+.hero .cta{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}.hero .cta .btn,.hero .cta button{padding:14px 20px;font-size:15px}
+.ring{animation:ring 2.4s infinite}@keyframes ring{0%,100%{box-shadow:0 8px 30px -8px rgba(255,122,26,.6)}50%{box-shadow:0 0 0 10px rgba(255,122,26,.12),0 8px 30px -8px rgba(255,122,26,.8)}}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px}.sec-h h2{font-size:20px;margin:0}
+#reelRow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px;margin-bottom:18px}
+.reel{flex:0 0 auto;width:132px;aspect-ratio:9/16;padding:0;border-radius:18px;overflow:hidden;position:relative;scroll-snap-align:start;border:0;background:#000;box-shadow:0 0 0 2px var(--brand),0 12px 30px -12px rgba(0,0,0,.8);transition:transform .2s}
+.reel:hover{transform:translateY(-3px)}.reel video,.reel img{width:100%;height:100%;object-fit:cover}
+.reel .cap{position:absolute;left:0;right:0;bottom:0;padding:22px 9px 9px;font-size:12px;text-align:left;white-space:normal;background:linear-gradient(transparent,rgba(0,0,0,.88));color:#fff}
+.reel .play{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);display:grid;place-items:center;font-size:10px;color:#fff}
+.menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:22px}
+.item{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 16px;border-radius:16px;background:var(--card);border:1px solid var(--line);transition:.2s}
+.item:hover{border-color:rgba(255,122,26,.4);background:rgba(255,122,26,.05)}.item b{display:block;font-size:15px}.item span{color:var(--brand2);font-weight:600;font-size:14px}
+.item button{margin-left:auto;width:38px;height:38px;border-radius:12px;padding:0;justify-content:center;font-size:20px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--brand-ink);border:0}
+.wrap{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}@media(max-width:880px){.wrap{grid-template-columns:1fr}.hero .cta{margin-left:0;width:100%}.hero .cta>*{flex:1;justify-content:center}}
+.chat{padding:0;overflow:hidden;border-radius:22px}
 .chathead{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,122,26,.12),transparent)}
-.orb{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brand2),var(--brand) 55%,#7a2c00);box-shadow:0 0 0 6px rgba(255,122,26,.12),0 0 30px rgba(255,122,26,.5);animation:breathe 2.4s ease-in-out infinite}
-@keyframes breathe{50%{box-shadow:0 0 0 12px rgba(255,122,26,.05),0 0 44px rgba(255,122,26,.7)}}
-#log{height:58vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:20px}
-.msg{max-width:78%;padding:12px 15px;border-radius:18px;line-height:1.5;word-wrap:break-word;font-size:15px}
+.orb{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brand2),var(--brand) 55%,#7a2c00);box-shadow:0 0 0 6px rgba(255,122,26,.12),0 0 30px rgba(255,122,26,.5);animation:breathe 2.4s ease-in-out infinite;flex:none}
+.orb.live{animation:breathe .9s ease-in-out infinite}@keyframes breathe{50%{box-shadow:0 0 0 12px rgba(255,122,26,.05),0 0 44px rgba(255,122,26,.7)}}
+#log{height:52vh;min-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:20px}
+.msg{max-width:80%;padding:12px 15px;border-radius:18px;line-height:1.5;word-wrap:break-word;font-size:15px;animation:tin .2s ease-out}
 .user{align-self:flex-end;background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--brand-ink);border-bottom-right-radius:6px;font-weight:500}
 .assistant{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid var(--line);border-bottom-left-radius:6px}
-.msg a{color:inherit;font-weight:600}.tool{align-self:center;font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.03)}
+.msg a{color:inherit;font-weight:700}.tool{align-self:center;font-size:12px;color:var(--muted);padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.04)}
+.typing{align-self:flex-start;display:flex;gap:4px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.06)}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{40%{transform:translateY(-5px);background:var(--brand2)}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 12px}.chips button{padding:8px 12px;font-size:13px;border-radius:99px}
 #f{padding:14px;border-top:1px solid var(--line);margin:0!important;flex-wrap:nowrap}
-#mic{border-radius:99px;height:46px;padding:0 16px;justify-content:center}
-#mic.on{background:var(--bad);border-color:var(--bad);color:#fff;box-shadow:0 0 0 6px rgba(255,93,93,.2)}#text{flex:1;min-width:0}
-.ordercard{position:sticky;top:20px}.ordercard h3{margin:0 0 14px;font-size:22px}
-#order .row{padding:8px 0}#order hr{margin:10px 0}#pay{margin-top:12px;width:100%;justify-content:center}
-@media(max-width:860px){#log{height:50vh}.ordercard{position:static}}
+#mic{border-radius:99px;height:46px;padding:0 16px;justify-content:center}#mic.on{background:#ff4d2e;border-color:#ff4d2e;color:#fff;box-shadow:0 0 0 6px rgba(255,77,46,.2)}#text{flex:1;min-width:0}
+.ordercard{position:sticky;top:20px;border-radius:22px;padding:22px}.ordercard h3{margin:0 0 14px;font-size:21px}
+#order .row{padding:8px 0}#pay{margin-top:14px;width:100%;justify-content:center;padding:15px;font-size:16px}
+.empty{text-align:center;padding:18px 0;color:var(--muted)}.empty div{font-size:34px;margin-bottom:6px}
+.settings{margin-top:14px;font-size:13px;color:var(--muted)}.settings summary{cursor:pointer}.settings label{display:flex;gap:8px;align-items:center;margin-top:8px}
+@media(max-width:880px){#log{height:48vh}.ordercard{position:static}.reel{width:112px}}
 </style></head>
-<body>
-<header><h1><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span><span id="bname">Order</span></h1><nav><label class="row muted"><input type="checkbox" id="speak" checked> Speak replies</label>
-<label class="row muted"><input type="checkbox" id="showTools"> Show agent steps</label><button id="vapiBtn" class="primary" hidden>📞 Real call (Vapi)</button><button id="reset">New call</button></nav></header>
-<section id="reels" hidden style="max-width:1180px;margin:0 auto;padding:0 20px 6px">
-  <div style="display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px" id="reelRow"></div></section>
-<div id="reelView" hidden style="position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.92);display:grid;place-items:center" onclick="if(event.target===this)closeReel()">
+<body><div class="shell">
+<div class="top"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>
+  <span class="name" id="bname">Loading…</span><span class="open">Open now</span><button class="sp" id="reset">New chat</button></div>
+
+<section class="hero"><div class="avatar" id="avatar">·</div>
+  <div><h1 id="htitle">Welcome</h1><p>Order, book or ask anything. Our AI assistant replies instantly, any time of day, and you pay securely with Paystack.</p></div>
+  <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><a class="btn" href="#chat" id="chatBtn">💬 Chat to order</a></div></section>
+
+<section id="reels" hidden><div class="sec-h"><h2>Our work</h2><span class="muted" style="font-size:13px">Tap to watch</span></div><div id="reelRow"></div></section>
+<section id="menuSec" hidden><div class="sec-h"><h2>Menu &amp; prices</h2><span class="muted" style="font-size:13px">Tap + to add</span></div><div class="menu" id="menu"></div></section>
+
+<main class="wrap" id="chat">
+  <div class="card chat"><div class="chathead"><div class="orb" id="orb"></div><div><b id="aname">Assistant</b><div class="muted" style="font-size:13px" id="astatus">Online · replies instantly</div></div></div>
+    <div id="log"></div>
+    <div class="chips" id="chips"><button data-q="What do you have?">What do you have?</button><button data-q="How much is delivery?">Delivery?</button><button data-q="I want to book an appointment">Book a visit</button></div>
+    <form id="f" class="row"><button type="button" id="mic" title="Talk instead of typing">🎤 Talk</button>
+      <input id="text" placeholder="Type your order…" autocomplete="off"><button class="primary">Send</button></form></div>
+  <div class="card ordercard"><h3>Your order</h3><div id="order"></div>
+    <details class="settings"><summary>Settings</summary><label><input type="checkbox" id="speak" checked> Read replies aloud</label><label><input type="checkbox" id="showTools"> Show assistant steps</label></details></div>
+</main></div>
+
+<div id="reelView" hidden style="position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.94);display:grid;place-items:center" onclick="if(event.target===this)closeReel()">
   <div style="position:relative;height:min(86vh,760px);aspect-ratio:9/16;max-width:94vw;border-radius:18px;overflow:hidden;background:#000" id="reelBox"></div>
   <button onclick="closeReel()" style="position:absolute;top:16px;right:16px;border-radius:50%;width:44px;height:44px;padding:0;justify-content:center">✕</button></div>
-<main class="wrap">
-  <div class="card chat"><div class="chathead"><div class="orb"></div><div><b>Orderly</b><div class="muted" style="font-size:13px">AI ordering assistant · replies instantly</div></div></div><div id="log"></div>
-    <form id="f" class="row" style="margin-top:12px"><button type="button" id="mic" title="Hold a conversation by voice">🎤 Talk</button>
-      <input id="text" placeholder="Type, or press Talk and speak…" autocomplete="off"><button class="primary">Send</button></form></div>
-  <div class="card ordercard"><h3>Your order</h3><div id="order" class="muted">Empty</div>
-    <p class="muted" style="font-size:13px">This panel shows the server's state machine, not the AI's memory.</p></div>
-</main>
+
 <script src="config.js"></script><script src="app.js"></script>
 <script>
 const BID = new URLSearchParams(location.search).get('b');
 window.bizInfo = BID ? fetch(API + '/api/public/' + BID).then(r => r.ok ? r.json() : Promise.reject(new Error('Business not found'))) : Promise.reject(new Error('Missing business link'));
-window.bizInfo.then(b => { renderReels(b.media || []); }, () => {});
-let reelItems = [];
-function renderReels(items) {
-  reelItems = items; if (!items.length) return;
-  $('#reels').hidden = false;
-  $('#reelRow').innerHTML = items.map((m, i) => `<button onclick="openReel(${i})" style="flex:0 0 auto;width:118px;aspect-ratio:9/16;padding:0;border-radius:16px;overflow:hidden;position:relative;scroll-snap-align:start;border:2px solid var(--brand);background:#000">
-    ${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline autoplay preload="metadata" style="width:100%;height:100%;object-fit:cover"></video>` : `<img src="${m.url}" loading="lazy" style="width:100%;height:100%;object-fit:cover" alt="">`}
-    ${m.caption ? `<span style="position:absolute;left:0;right:0;bottom:0;padding:18px 8px 8px;font-size:11.5px;text-align:left;white-space:normal;background:linear-gradient(transparent,rgba(0,0,0,.85))">${esc(m.caption)}</span>` : ''}</button>`).join('');
+let sessionId, messages, busy = false;
+window.bizInfo.then(b => {
+  document.title = b.name; $('#bname').textContent = b.name; $('#htitle').textContent = b.name; $('#aname').textContent = `${b.name} assistant`;
+  $('#avatar').textContent = b.name.trim()[0].toUpperCase();
+  renderReels(b.media || []);
+  if (b.menu?.length) {
+    $('#menuSec').hidden = false;
+    $('#menu').innerHTML = b.menu.map(m => `<div class="item"><div><b>${esc(m.name)}</b><span>${naira(m.priceKobo)}</span></div><button data-add="${esc(m.name)}" aria-label="Add ${esc(m.name)}">+</button></div>`).join('');
+    document.querySelectorAll('[data-add]').forEach(x => x.onclick = () => { send(`I'd like one ${x.dataset.add}`); $('#chat').scrollIntoView({ behavior: 'smooth' }); });
+  }
+}, e => { $('#bname').textContent = 'Orderly'; $('#log').innerHTML = `<p class="muted">${esc(e.message)}</p>`; $('#f').hidden = true; });
+
+function reset() {
+  sessionId = crypto.randomUUID().replace(/-/g, ''); messages = [];
+  $('#log').innerHTML = ''; renderOrder(null);
+  add('assistant', "Hello! 👋 What would you like today? You can tap + on the menu, type, or press Talk.");
 }
-let reelIdx = 0;
+// Most natural voice the device offers (Edge/Chrome "Natural"/"Online" voices sound far better than defaults).
+let voice;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices(); if (!vs.length) return;
+  const prefs = [/(Ezinne|Abeo).*(Natural|Online)/i, /(Aria|Jenny|Ava|Emma|Sonia|Libby|Natasha|Clara).*(Natural|Online)/i, /(Natural|Online)/i, /Google UK English Female/i, /Google US English/i, /Samantha|Karen|Zira/i];
+  for (const p of prefs) { voice = vs.find(v => p.test(v.name) && /^en/i.test(v.lang)); if (voice) return; }
+}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function add(role, text) {
+  if (role !== 'tool') messages.push({ role, content: text });
+  const d = document.createElement('div'); d.className = 'msg ' + role;
+  d.innerHTML = esc(text).replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '$2').replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener">Pay securely →</a>');
+  $('#log').append(d); $('#log').scrollTop = 1e9;
+  if (role === 'assistant' && $('#speak').checked && 'speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/https?:\/\/\S+/g, 'the payment link').replace(/₦\s?([\d,]+)/g, '$1 naira'));
+    if (voice) u.voice = voice; u.lang = voice?.lang || 'en-GB'; u.rate = 1.03; u.pitch = 1.05;
+    u.onend = () => voiceMode && listen(); speechSynthesis.speak(u);
+  } else if (role === 'assistant' && voiceMode) listen();
+}
+function renderOrder(o) {
+  if (!o || !o.items.length) { $('#order').innerHTML = '<div class="empty"><div>🛍️</div>Nothing yet. Add something from the menu or tell the assistant.</div>'; return; }
+  $('#order').innerHTML = o.items.map(i => `<div class="row" style="justify-content:space-between"><span>${i.qty} × ${esc(i.name)}</span><span>${naira(i.qty * i.priceKobo)}</span></div>`).join('')
+    + `<hr style="border:0;border-top:1px dashed var(--line)"><div class="row" style="justify-content:space-between;font-size:18px"><b>Total</b><b>${naira(o.items.reduce((s, i) => s + i.qty * i.priceKobo, 0))}</b></div>
+    <p><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></p>${o.paymentUrl ? `<a id="pay" class="btn primary" href="${o.paymentUrl}" target="_blank" rel="noopener">Pay now</a>` : ''}`;
+}
+async function send(text) {
+  if (!text.trim() || busy) return;
+  busy = true; add('user', text); $('#text').value = ''; $('#chips').hidden = true;
+  const t = document.createElement('div'); t.className = 'typing'; t.innerHTML = '<i></i><i></i><i></i>'; $('#log').append(t); $('#log').scrollTop = 1e9;
+  try {
+    const r = await fetch(API + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: BID, sessionId, messages }) });
+    const data = await r.json(); t.remove();
+    if (!r.ok) throw new Error(data.error || 'Something went wrong');
+    if ($('#showTools').checked) data.steps.forEach(s => add('tool', `⚙ ${s.tool} → ${s.result.slice(0, 90)}`));
+    add('assistant', data.reply);
+    const link = data.reply.match(/https?:\/\/[^\s)\]]+/); renderOrder({ ...data.order, paymentUrl: data.order.status === 'awaiting_payment' && link ? link[0] : null });
+  } catch (e) { t.remove(); toast(e.message, 'error'); }
+  busy = false;
+}
+$('#f').onsubmit = e => { e.preventDefault(); send($('#text').value); };
+document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => send(b.dataset.q));
+$('#reset').onclick = () => { stopVoice(); reset(); $('#chips').hidden = false; };
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec, voiceMode = false;
+function listen() {
+  if (!SR || !voiceMode || busy) return;
+  rec = new SR(); rec.lang = 'en-NG'; rec.interimResults = true; rec.maxAlternatives = 3;
+  rec.onresult = e => { const r = e.results[e.results.length - 1]; $('#text').value = r[0].transcript; if (r.isFinal) send(r[0].transcript); };
+  rec.onerror = () => {}; rec.onend = () => { if (voiceMode && !busy && !speechSynthesis.speaking) setTimeout(listen, 250); };
+  try { rec.start(); } catch {}
+}
+function stopVoice() { voiceMode = false; $('#mic').classList.remove('on'); $('#mic').textContent = '🎤 Talk'; $('#orb').classList.remove('live'); try { rec && rec.abort(); } catch {} speechSynthesis.cancel(); }
+$('#mic').onclick = () => {
+  if (!SR) return toast('Voice needs Chrome or Edge. You can still type.', 'info');
+  if (voiceMode) return stopVoice();
+  voiceMode = true; $('#mic').classList.add('on'); $('#mic').textContent = '⏹ Stop'; $('#orb').classList.add('live'); speechSynthesis.cancel(); listen();
+};
+let reelItems = [], reelIdx = 0;
+function renderReels(items) {
+  reelItems = items; if (!items.length) return; $('#reels').hidden = false;
+  $('#reelRow').innerHTML = items.map((m, i) => `<button class="reel" onclick="openReel(${i})">${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline autoplay preload="metadata"></video><span class="play">▶</span>` : `<img src="${m.url}" loading="lazy" alt="">`}${m.caption ? `<span class="cap">${esc(m.caption)}</span>` : ''}</button>`).join('');
+}
 function openReel(i) {
   reelIdx = (i + reelItems.length) % reelItems.length; const m = reelItems[reelIdx];
   $('#reelBox').innerHTML = (m.kind === 'video' ? `<video src="${m.url}" autoplay playsinline controls style="width:100%;height:100%;object-fit:cover" onended="openReel(reelIdx+1)"></video>` : `<img src="${m.url}" style="width:100%;height:100%;object-fit:cover" alt="">`)
     + (m.caption ? `<div style="position:absolute;left:0;right:0;bottom:0;padding:40px 16px 18px;background:linear-gradient(transparent,rgba(0,0,0,.85))">${esc(m.caption)}</div>` : '')
     + '<div onclick="openReel(reelIdx-1)" style="position:absolute;left:0;top:0;bottom:60px;width:30%"></div><div onclick="openReel(reelIdx+1)" style="position:absolute;right:0;top:0;bottom:60px;width:30%"></div>';
-  $('#reelView').hidden = false;
-  if (m.kind === 'image') { clearTimeout(window._rt); window._rt = setTimeout(() => !$('#reelView').hidden && reelIdx === reelItems.indexOf(m) && openReel(reelIdx + 1), 5000); }
+  $('#reelView').hidden = false; clearTimeout(window._rt);
+  if (m.kind === 'image') window._rt = setTimeout(() => !$('#reelView').hidden && openReel(reelIdx + 1), 5000);
 }
 function closeReel() { $('#reelView').hidden = true; $('#reelBox').innerHTML = ''; clearTimeout(window._rt); }
-window.bizInfo.then(b => { $('#bname').textContent = b.name; document.title = b.name + ' Order'; }, e => { $('#log').innerHTML = `<p class="muted">${esc(e.message)}</p>`; $('#f').hidden = true; });
-let sessionId, messages, busy = false;
-function reset() {
-  sessionId = crypto.randomUUID().replace(/-/g, '');
-  messages = [];
-  $('#log').innerHTML = ''; $('#order').textContent = 'Empty';
-  add('assistant', 'Hello, thanks for calling! What would you like to order today?');
-}
-function add(role, text) {
-  if (role !== 'tool') messages.push({ role, content: text });
-  const d = document.createElement('div'); d.className = 'msg ' + role;
-  d.innerHTML = esc(text).replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-  $('#log').append(d); $('#log').scrollTop = 1e9;
-  if (role === 'assistant' && $('#speak').checked && 'speechSynthesis' in window) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, 'the link on screen'));
-    u.lang = 'en-NG'; u.onend = () => voiceMode && listen(); speechSynthesis.speak(u);
-  } else if (role === 'assistant' && voiceMode) listen();
-}
-function renderOrder(o) {
-  if (!o || !o.items.length) { $('#order').innerHTML = '<span class="muted">Empty</span>'; return; }
-  $('#order').innerHTML = o.items.map(i => `<div class="row" style="justify-content:space-between"><span>${i.qty} × ${esc(i.name)}</span><span>${naira(i.qty * i.priceKobo)}</span></div>`).join('')
-    + `<hr style="border:0;border-top:1px solid var(--line)"><div class="row" style="justify-content:space-between"><b>Total</b><b>${naira(o.items.reduce((s, i) => s + i.qty * i.priceKobo, 0))}</b></div>
-    <p><span class="pill ${o.status}">${o.status.replace('_', ' ')}</span></p>`;
-}
-async function send(text) {
-  if (!text.trim() || busy) return;
-  busy = true; add('user', text); $('#text').value = '';
-  const thinking = document.createElement('div'); thinking.className = 'tool'; thinking.textContent = 'Orderly is thinking…'; $('#log').append(thinking);
-  try {
-    const r = await fetch(API + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: BID, sessionId, messages }) });
-    const data = await r.json(); thinking.remove();
-    if (!r.ok) throw new Error(data.error || 'Server error');
-    if ($('#showTools').checked) data.steps.forEach(s => add('tool', `⚙ ${s.tool}(${JSON.stringify(s.args)}) → ${s.result}`));
-    add('assistant', data.reply); renderOrder(data.order);
-  } catch (e) { thinking.remove(); toast(e.message, 'error'); }
-  busy = false;
-}
-$('#f').onsubmit = e => { e.preventDefault(); send($('#text').value); };
-$('#reset').onclick = () => { stopVoice(); reset(); };
-
-// Browser voice: hands-free loop (listen -> send -> speak -> listen) via Web Speech API.
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec, voiceMode = false;
-function listen() {
-  if (!SR || !voiceMode || busy) return;
-  rec = new SR(); rec.lang = 'en-NG'; rec.interimResults = false;
-  rec.onresult = e => send(e.results[0][0].transcript);
-  rec.onerror = () => {}; rec.onend = () => { if (voiceMode && !busy && !speechSynthesis.speaking) setTimeout(listen, 300); };
-  try { rec.start(); } catch {}
-}
-function stopVoice() { voiceMode = false; $('#mic').classList.remove('on'); $('#mic').textContent = '🎤 Talk'; try { rec && rec.abort(); } catch {} speechSynthesis.cancel(); }
-$('#mic').onclick = () => {
-  if (!SR) return toast('Voice needs Chrome or Edge. You can still type.', 'info');
-  if (voiceMode) return stopVoice();
-  voiceMode = true; $('#mic').classList.add('on'); $('#mic').textContent = '⏹ Stop'; speechSynthesis.cancel(); listen();
-};
+document.addEventListener('keydown', e => { if ($('#reelView').hidden) return; if (e.key === 'Escape') closeReel(); if (e.key === 'ArrowRight') openReel(reelIdx + 1); if (e.key === 'ArrowLeft') openReel(reelIdx - 1); });
 reset();
 window._add = add; window._renderOrder = renderOrder; window._stopVoice = stopVoice; window._resetLog = () => { $('#log').innerHTML = ''; renderOrder(null); };
 </script>
 <script type="module">
-// Real voice call through Vapi (same agent + state machine as phone calls).
+// Real voice call through Vapi (natural voice, same agent + order system as phone calls).
 import Vapi from 'https://esm.sh/@vapi-ai/web@3.1.0';
 const btn = document.getElementById('vapiBtn');
-const cfg = await window.bizInfo.then(b => ({ vapiPublicKey: b.vapiPublicKey, vapiAssistantId: b.vapiAssistantId }), () => ({}));
-if (cfg.vapiPublicKey && cfg.vapiAssistantId) {
+const cfg = await window.bizInfo.then(b => ({ key: b.vapiPublicKey, id: b.vapiAssistantId }), () => ({}));
+if (cfg.key && cfg.id) {
   btn.hidden = false;
-  const vapi = new Vapi(cfg.vapiPublicKey);
+  const vapi = new Vapi(cfg.key);
   let callId, poll, active = false;
-  const showOrder = async () => {
-    if (!callId) return;
-    const o = await fetch(API + '/api/order/' + callId).then(r => r.json()).catch(() => null);
-    if (!o) return;
-    window._renderOrder(o);
-    if (o.paymentUrl && !document.getElementById('pay')) {
-      document.getElementById('order').insertAdjacentHTML('beforeend', `<a id="pay" class="btn primary" href="${o.paymentUrl}" target="_blank" rel="noopener">Pay now</a>`);
-    }
-  };
+  const showOrder = async () => { if (!callId) return; const o = await fetch(API + '/api/order/' + callId).then(r => r.json()).catch(() => null); if (o) window._renderOrder(o); };
   btn.onclick = async () => {
     if (active) return vapi.stop();
-    window._stopVoice(); window._resetLog();
-    btn.textContent = 'Connecting…';
-    try { const call = await vapi.start(cfg.vapiAssistantId); callId = call?.id; }
-    catch (e) { btn.textContent = '📞 Real call (Vapi)'; toast(e.message || 'Could not start the call', 'error'); }
+    window._stopVoice(); window._resetLog(); btn.textContent = 'Connecting…';
+    try { const call = await vapi.start(cfg.id); callId = call?.id; }
+    catch (e) { btn.textContent = '📞 Talk to us'; toast(e.message || 'Could not start the call', 'error'); }
   };
-  vapi.on('call-start', () => { active = true; btn.textContent = '⏹ Hang up'; poll = setInterval(showOrder, 1500); });
-  vapi.on('call-end', () => { active = false; btn.textContent = '📞 Real call (Vapi)'; clearInterval(poll); showOrder(); window._add('tool', 'Call ended.'); });
+  vapi.on('call-start', () => { active = true; btn.textContent = '⏹ End call'; btn.classList.remove('ring'); $('#orb').classList.add('live'); $('#astatus').textContent = 'On a call · listening'; poll = setInterval(showOrder, 1500); });
+  vapi.on('call-end', () => { active = false; btn.textContent = '📞 Talk to us'; btn.classList.add('ring'); $('#orb').classList.remove('live'); $('#astatus').textContent = 'Online · replies instantly'; clearInterval(poll); showOrder(); window._add('tool', 'Call ended'); });
+  vapi.on('speech-start', () => $('#astatus').textContent = 'Speaking…');
+  vapi.on('speech-end', () => $('#astatus').textContent = 'Listening…');
   vapi.on('message', m => { if (m.type === 'transcript' && m.transcriptType === 'final') window._add(m.role === 'user' ? 'user' : 'tool', (m.role === 'user' ? '' : '🔊 ') + m.transcript); });
   vapi.on('error', e => { const m = e?.errorMsg || e?.error?.message || e?.error?.msg || e?.message || (typeof e?.error === 'string' ? e.error : ''); if (!/ended|ejected/i.test(m)) toast(m || 'The call had a problem. Please try again.', 'error'); });
 }

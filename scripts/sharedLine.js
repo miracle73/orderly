@@ -17,8 +17,11 @@ const api = async (method, path, body) => {
     server: { url: `${base}/vapi/shared`, secret: VAPI_SECRET },
     serverMessages: ['end-of-call-report'],
     endCallPhrases: ['goodbye', 'bye bye'],
-    voice: { provider: 'azure', voiceId: 'en-NG-EzinneNeural' },
-    transcriber: { provider: 'deepgram', model: 'nova-2', language: 'en' },
+    voice: { provider: 'vapi', voiceId: 'Savannah' },
+    startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingPlan: { provider: 'livekit' } },
+    stopSpeakingPlan: { numWords: 2, voiceSeconds: 0.2, backoffSeconds: 1 },
+    backgroundDenoisingEnabled: true,
+    transcriber: { provider: 'deepgram', model: 'nova-3', language: 'en' },
   };
   const existing = (await api('GET', '/assistant?limit=100')).find(a => a.name === config.name);
   const assistant = existing ? await api('PATCH', `/assistant/${existing.id}`, config) : await api('POST', '/assistant', config);

@@ -11,7 +11,7 @@ async function api(method, path, body) {
   return json;
 }
 
-const assistantConfig = (b, baseUrl) => ({
+const assistantConfig = (b, baseUrl, keyterms = []) => ({
   name: `Orderly ${b.name}`.slice(0, 40),
   firstMessage: `Hello, thanks for calling ${b.name}! What would you like to order today?`,
   model: {
@@ -21,17 +21,21 @@ const assistantConfig = (b, baseUrl) => ({
   server: { url: `${baseUrl}/vapi/${b.id}`, secret: process.env.VAPI_SECRET },
   serverMessages: ['end-of-call-report'],
   endCallPhrases: ['goodbye', 'bye bye'],
-  voice: { provider: 'azure', voiceId: 'en-NG-EzinneNeural' },
-  transcriber: { provider: 'deepgram', model: 'nova-2', language: 'en' },
+  voice: { provider: 'vapi', voiceId: 'Savannah' },
+  startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingPlan: { provider: 'livekit' } },
+  stopSpeakingPlan: { numWords: 2, voiceSeconds: 0.2, backoffSeconds: 1 },
+  backgroundDenoisingEnabled: true,
+  // nova-3 + the business's own menu words = much better listening on noisy lines.
+  transcriber: { provider: 'deepgram', model: 'nova-3', language: 'en', keyterm: [b.name, ...keyterms].slice(0, 50) },
 });
 
 // Creates or updates the business's assistant; returns its id.
-async function syncAssistant(b, baseUrl) {
+async function syncAssistant(b, baseUrl, keyterms) {
   if (b.vapi_assistant_id) {
-    await api('PATCH', `/assistant/${b.vapi_assistant_id}`, assistantConfig(b, baseUrl));
+    await api('PATCH', `/assistant/${b.vapi_assistant_id}`, assistantConfig(b, baseUrl, keyterms));
     return b.vapi_assistant_id;
   }
-  return (await api('POST', '/assistant', assistantConfig(b, baseUrl))).id;
+  return (await api('POST', '/assistant', assistantConfig(b, baseUrl, keyterms))).id;
 }
 
 // Free Vapi number (US) by default, or import the business's own Twilio number (e.g. a Nigerian +234 line).
