@@ -85,6 +85,15 @@
         <div id="coverPrev" style="aspect-ratio:3/1;max-width:640px;border-radius:16px;overflow:hidden;margin:12px 0;background:radial-gradient(40% 60% at 80% 20%,rgba(255,181,71,.55),transparent 70%),radial-gradient(35% 55% at 15% 85%,rgba(255,122,26,.5),transparent 70%),#140c06;display:grid;place-items:center;color:#f4efe6;font:700 18px var(--display)">Orderly default cover</div>
         <div class="row"><label class="btn primary" style="cursor:pointer"><span id="coverBtnTxt">Upload cover</span><input id="coverFile" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" hidden></label>
           <button type="button" id="coverDel" hidden>Use default cover</button></div></div>
+      <div class="card"><h3>💬 WhatsApp assistant <span id="wa-status"></span></h3>
+        <div id="waOn" hidden><p>Your AI assistant is answering WhatsApp messages on <b id="waNum"></b>. Customers just message that number to order.</p>
+          <p class="muted" style="font-size:13px">If replies don't arrive, open your Twilio WhatsApp sender settings and set "When a message comes in" to:</p><div class="code" id="waHook"></div>
+          <button type="button" id="waOff" style="margin-top:12px">Disconnect WhatsApp</button></div>
+        <div id="waSetup"><p class="muted">Let customers order on WhatsApp, with your AI replying 24/7. Takes about 10 minutes:</p>
+          <ol style="line-height:1.8;padding-left:20px;margin:6px 0 14px"><li>Create a free account at <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener">twilio.com</a> and open <b>Messaging → WhatsApp senders</b> to add your WhatsApp business number.</li>
+            <li>On your Twilio <b>Console home</b>, copy the <b>Account SID</b> and <b>Auth Token</b>.</li><li>Paste them below with your WhatsApp number and click Connect. We set up the rest.</li></ol>
+          <form id="f-wa" class="row"><input name="accountSid" placeholder="Account SID (AC…)" required style="min-width:230px"><input name="authToken" type="password" placeholder="Auth Token" required>
+            <input name="number" placeholder="WhatsApp number, e.g. +2348012345678" required style="min-width:230px"><button class="primary">Connect WhatsApp</button></form></div></div>
       <div class="card"><h3>2. Get paid <span id="pay-status"></span></h3>
         <p class="muted">Customers pay by card, transfer or USSD. Your money is paid straight into this bank account.</p>
         <p id="payout-now" hidden style="margin:0 0 12px"></p>
@@ -140,6 +149,9 @@ function renderMe() {
   $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link;
   $('#copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => { $('#copyLink').textContent = 'Copied ✓'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); });
   $('#f-pw').closest('.card').hidden = me.authProvider === 'google';
+  $('#waOn').hidden = !me.whatsapp; $('#waSetup').hidden = !!me.whatsapp; $('#waHook').textContent = me.whatsappWebhookUrl;
+  if (me.whatsapp) $('#waNum').textContent = me.whatsapp.number;
+  $('#wa-status').innerHTML = me.whatsapp ? '<span class="ok">✓ live</span>' : '<span class="muted">not connected</span>';
   const cv = me.cover;
   $('#coverPrev').innerHTML = cv ? (cv.kind === 'video' ? `<video src="${cv.url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>` : `<img src="${cv.url}" style="width:100%;height:100%;object-fit:cover" alt="">`) : 'Orderly default cover';
   $('#coverDel').hidden = !cv; $('#coverBtnTxt').textContent = cv ? 'Change cover' : 'Upload cover';
@@ -180,6 +192,9 @@ $('#mcpBtn').onclick = guard(async () => {
   $('#mcpCopy').onclick = () => navigator.clipboard.writeText(key).then(() => toast('API key copied'));
   toast('MCP key created. Copy it now.');
 });
+$('#f-wa').onsubmit = guard(async e => { const r = await api('/api/me/whatsapp', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) }); me = r; e.target.reset(); renderMe();
+  toast(r.autoConfigured ? 'WhatsApp connected! Your AI is now replying to customers.' : 'Connected! One last step: paste the webhook link shown into your Twilio WhatsApp sender.', r.autoConfigured ? 'success' : 'info'); });
+$('#waOff').onclick = guard(async () => { if (await confirmModal({ title: 'Disconnect WhatsApp?', message: 'Your AI will stop replying on WhatsApp.', ok: 'Disconnect', danger: true })) { me = await api('/api/me/whatsapp', { method: 'DELETE' }); renderMe(); toast('WhatsApp disconnected'); } });
 $('#coverFile').onchange = guard(async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   toast('Uploading cover…', 'info');

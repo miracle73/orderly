@@ -103,7 +103,7 @@ body.chat-open .drawer{transform:none}body.chat-open .scrim{opacity:1;pointer-ev
   <div class="arrows"><button type="button" onclick="slideReels(-1)" aria-label="Previous">‹</button><button type="button" onclick="slideReels(1)" aria-label="Next">›</button></div></div><div id="reelRow"></div></div>
   <div class="inner"><div class="avatar" id="avatar">·</div>
     <div><h1 id="htitle">Welcome</h1><p id="htag">Order, book or ask anything. Our AI assistant replies instantly, day or night, and you pay securely with Paystack.</p></div>
-    <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><button type="button" id="chatBtn">💬 Chat to order</button></div></div></section>
+    <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><button type="button" id="chatBtn">💬 Chat to order</button><a class="btn" id="waBtn" hidden target="_blank" rel="noopener" style="background:#25D366;color:#062b13;border:0;font-weight:600">WhatsApp</a></div></div></section>
 <section class="trust"><div><i>⚡</i><span><b>Instant replies</b>No waiting on hold</span></div><div><i>🔒</i><span><b>Secure payment</b>Protected by Paystack</span></div>
   <div><i>🧾</i><span><b>Instant receipt</b>For every paid order</span></div><div><i>🌙</i><span><b>Open 24/7</b>Order any time</span></div></section>
 
@@ -140,6 +140,7 @@ window.bizInfo.then(b => {
   document.title = b.name; $('#bname').textContent = b.name; $('#htitle').textContent = b.name; $('#aname').textContent = b.name;
   $('#avatar').textContent = b.name.trim()[0].toUpperCase();
   renderReels(b.media || []);
+  if (b.whatsapp) { $('#waBtn').hidden = false; $('#waBtn').href = 'https://wa.me/' + b.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(`Hi ${b.name}, I'd like to order`); }
   const cover = b.cover;
   if (cover) { $('#art').hidden = true; $('#coverMedia').innerHTML = cover.kind === 'video' ? `<video src="${cover.url}" autoplay muted loop playsinline></video>` : `<img src="${cover.url}" alt="">`; }
   $('#htag').textContent = b.menu?.length ? `Fresh from ${b.name}. Browse the menu, chat or call to order, and pay securely in seconds.` : $('#htag').textContent;

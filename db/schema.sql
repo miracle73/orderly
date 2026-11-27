@@ -129,3 +129,8 @@ CREATE INDEX IF NOT EXISTS media_business_idx ON media (business_id, created_at 
 
 -- v9: cover photo/video, separate from the Showcase gallery
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS cover_key TEXT;
+
+-- v10: per-business WhatsApp via the business's own Twilio account
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_sid TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_token_enc TEXT;
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS wa_number TEXT;

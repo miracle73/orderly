@@ -15,8 +15,10 @@ const { forSpeech } = require('./speech');
 const mcp = require('./mcp');
 const books = require('./books');
 const media = require('./media');
+const whatsapp = require('./whatsapp');
 
 const app = express();
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 // CORS for the Vercel frontend.
@@ -49,6 +51,7 @@ async function businessOr404(id) {
 const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
   voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code, authProvider: b.auth_provider, cover: media.coverOf(b),
+  whatsapp: b.wa_number ? { number: b.wa_number } : null, whatsappWebhookUrl: `${baseUrl(req)}/whatsapp/twilio/${b.id}`,
   sharedNumber: process.env.SHARED_PHONE_NUMBER || null,
   payout: b.bank_code ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
@@ -273,6 +276,13 @@ me.delete('/cover', wrap(async (req, res) => {
   await store.updateBusiness(b.id, { cover_key: null }); await media.deleteKey(b.cover_key);
   res.json(profile(await businessOr404(b.id), req));
 }));
+// WhatsApp assistant (business's own Twilio account)
+me.post('/whatsapp', wrap(async (req, res) => {
+  const r = await whatsapp.connect(req.businessId, req.body || {}, `${baseUrl(req)}/whatsapp/twilio/${req.businessId}`);
+  res.json({ ...profile(await businessOr404(req.businessId), req), autoConfigured: r.autoConfigured });
+}));
+me.delete('/whatsapp', wrap(async (req, res) => { await whatsapp.disconnect(req.businessId); res.json(profile(await businessOr404(req.businessId), req)); }));
+
 me.get('/media', wrap(async (req, res) => res.json(await media.list(req.businessId))));
 me.post('/media/upload-url', wrap(async (req, res) => res.json(await media.uploadUrl(req.businessId, req.body || {}))));
 me.post('/media', wrap(async (req, res) => res.json(await media.register(req.businessId, req.body || {}))));
@@ -338,6 +348,29 @@ app.get('/api/receipts/:token', wrap(async (req, res) => {
   res.json(r);
 }));
 
+// Incoming WhatsApp message from Twilio -> AI agent -> TwiML reply (same agent, menu, orders and Paystack flow).
+app.post('/whatsapp/twilio/:businessId', wrap(async (req, res) => {
+  const b = await store.getBusiness(req.params.businessId);
+  const token = b && auth.decrypt(b.wa_token_enc);
+  if (!token) return res.sendStatus(404);
+  const url = `${baseUrl(req)}/whatsapp/twilio/${b.id}`;
+  if (!whatsapp.validSignature(token, url, req.body || {}, req.get('x-twilio-signature'))) return res.sendStatus(403);
+  const from = String(req.body.From || '').replace(/^whatsapp:/, ''), text = String(req.body.Body || '').trim();
+  res.type('text/xml');
+  if (!text) return res.send(whatsapp.twiml("Hi! 👋 Please type your order or question and we'll help you right away."));
+  const callId = await whatsapp.conversationId(b.id, from);
+  const { rows: [t] } = await store.pool.query('SELECT messages FROM transcripts WHERE call_id=$1', [callId]);
+  const history = [...(t?.messages || []).filter(m => m.role === 'user' || m.role === 'assistant').slice(-20), { role: 'user', content: text }];
+  let reply;
+  try { ({ reply } = await runAgent(history, { businessId: b.id, business: b, callId, phone: from, channel: 'web' }, agentDeps)); }
+  catch (e) { console.error('whatsapp agent', e); reply = 'Sorry, something went wrong on our side. Please send that again.'; }
+  reply = reply.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '$1: $2');
+  const all = [...history, { role: 'assistant', content: reply }];
+  await store.saveTranscript({ businessId: b.id, callId, phone: from, messages: all,
+    transcript: all.map(m => `${m.role === 'user' ? 'Customer' : 'Orderly'}: ${m.content}`).join('\n'), endedReason: 'whatsapp' });
+  res.send(whatsapp.twiml(reply));
+}));
+
 // ---------- Public ordering page ----------
 app.get('/api/public/:businessId', wrap(async (req, res) => {
   const b = await businessOr404(req.params.businessId);
@@ -345,7 +378,7 @@ app.get('/api/public/:businessId', wrap(async (req, res) => {
     name: b.name, phoneNumber: b.phone_number,
     vapiPublicKey: process.env.VAPI_PUBLIC_KEY || null, vapiAssistantId: b.vapi_assistant_id,
     menu: (await store.getMenu(b.id)).filter(m => m.available),
-    media: await media.list(b.id, true), cover: media.coverOf(b),
+    media: await media.list(b.id, true), cover: media.coverOf(b), whatsapp: b.wa_number || null,
   });
 }));
 

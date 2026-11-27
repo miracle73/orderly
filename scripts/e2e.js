@@ -149,6 +149,18 @@ const created = { emails: [], phoneIds: [] };
   await req('/api/me/media/' + m.id, { method: 'DELETE', token: tA });
   ok((await req('/api/me/media', { token: tA })).body.length === 0, 'delete photo');
 
+  // --- WhatsApp (Twilio) webhook: simulate a connected business and a signed incoming message
+  const waToken = 'e2e-twilio-token-0123456789abcdef';
+  await (await getDb()).query('UPDATE businesses SET wa_sid=$1, wa_token_enc=$2, wa_number=$3 WHERE id=$4', ['AC' + '0'.repeat(32), require('../src/auth').encrypt(waToken), '+15550001111', meA.id]);
+  const waUrl = API + '/whatsapp/twilio/' + meA.id, waParams = { From: 'whatsapp:+2348011112222', To: 'whatsapp:+15550001111', Body: 'Hi, I want one jollof rice please' };
+  const waSig = crypto.createHmac('sha1', waToken).update(waUrl + Object.keys(waParams).sort().map(k => k + waParams[k]).join('')).digest('base64');
+  let wr = await fetch(waUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Twilio-Signature': waSig }, body: new URLSearchParams(waParams) });
+  const wtxt = await wr.text();
+  ok(wr.ok && /<Message>/.test(wtxt), 'WhatsApp message gets an AI reply', wtxt.replace(/<[^>]+>/g, '').slice(0, 90));
+  wr = await fetch(waUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Twilio-Signature': 'forged' }, body: new URLSearchParams(waParams) });
+  ok(wr.status === 403, 'forged WhatsApp webhook rejected');
+  ok((await req('/api/public/' + meA.id)).body.whatsapp === '+15550001111', 'customer page shows WhatsApp button');
+
   // --- MCP server
   const mk = (await req('/api/me/mcp-key', { token: tA, body: {} })).body;
   ok(/^ord_/.test(mk.key || '') && mk.url.endsWith('/mcp'), 'create MCP key');
