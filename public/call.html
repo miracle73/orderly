@@ -29,6 +29,13 @@ body{background:radial-gradient(70% 45% at 85% -5%,rgba(255,122,26,.28),transpar
 .trust div{display:flex;gap:10px;align-items:center;padding:14px;border-radius:16px;background:var(--card);border:1px solid var(--line);font-size:13.5px}
 .trust b{display:block;font-size:14px;color:var(--ink)}.trust i{font-style:normal;font-size:22px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,122,26,.12);flex:none}
 @media(max-width:880px){.trust{grid-template-columns:1fr 1fr}.cover{min-height:420px}.cover .cta{margin-left:0;width:100%}.cover .cta>*{flex:1;justify-content:center}}
+.cover{min-height:380px}
+.cover .reelsIn{position:absolute;top:18px;right:18px;width:min(46%,520px);z-index:1}
+.cover .reelsIn .sec-h{margin:0 0 8px}.cover .reelsIn h2{font-size:15px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.cover .reelsIn #reelRow{margin:0;padding:2px 2px 6px;gap:10px}.cover .reelsIn .reel{width:104px;border-radius:16px}
+.cover .reelsIn .arrows button{width:32px;height:32px;font-size:15px;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);border-color:rgba(255,255,255,.2)}
+.cover .reelsIn .muted{display:none}
+@media(max-width:880px){.cover .reelsIn{position:static;width:auto;padding:16px 16px 0}.cover{flex-direction:column;align-items:stretch}.cover .reelsIn .reel{width:96px}}
 .sec-h{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px}.sec-h h2{font-size:20px;margin:0}
 #reelRow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px;margin-bottom:18px}
 .reel{flex:0 0 auto;width:132px;aspect-ratio:9/16;padding:0;border-radius:18px;overflow:hidden;position:relative;scroll-snap-align:start;border:0;background:#000;box-shadow:0 0 0 2px var(--brand),0 12px 30px -12px rgba(0,0,0,.8);transition:transform .2s}
@@ -92,14 +99,15 @@ body.chat-open .drawer{transform:none}body.chat-open .scrim{opacity:1;pointer-ev
   <span class="name" id="bname">Loading…</span><span class="open">Open now</span><button class="sp" id="reset">New chat</button></div>
 
 <section class="cover" id="cover"><div class="art" id="art"><span style="left:68%;top:14%">🛍️</span><span style="left:84%;top:40%;animation-delay:-2s">✨</span><span style="left:58%;top:46%;animation-delay:-4s;font-size:36px">🧡</span></div><div class="media" id="coverMedia"></div>
+  <div id="reels" hidden class="reelsIn"><div class="sec-h"><div><h2>Our work ✨</h2><span class="muted" style="font-size:13px">Swipe through and tap to watch</span></div>
+  <div class="arrows"><button type="button" onclick="slideReels(-1)" aria-label="Previous">‹</button><button type="button" onclick="slideReels(1)" aria-label="Next">›</button></div></div><div id="reelRow"></div></div>
   <div class="inner"><div class="avatar" id="avatar">·</div>
     <div><h1 id="htitle">Welcome</h1><p id="htag">Order, book or ask anything. Our AI assistant replies instantly, day or night, and you pay securely with Paystack.</p></div>
     <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><button type="button" id="chatBtn">💬 Chat to order</button></div></div></section>
 <section class="trust"><div><i>⚡</i><span><b>Instant replies</b>No waiting on hold</span></div><div><i>🔒</i><span><b>Secure payment</b>Protected by Paystack</span></div>
   <div><i>🧾</i><span><b>Instant receipt</b>For every paid order</span></div><div><i>🌙</i><span><b>Open 24/7</b>Order any time</span></div></section>
 
-<section id="reels" hidden class="reels-wrap"><div class="sec-h"><div><h2>Our work ✨</h2><span class="muted" style="font-size:13px">Swipe through and tap to watch</span></div>
-  <div class="arrows"><button type="button" onclick="slideReels(-1)" aria-label="Previous">‹</button><button type="button" onclick="slideReels(1)" aria-label="Next">›</button></div></div><div id="reelRow"></div></section>
+
 <section id="menuSec" hidden><div class="sec-h"><h2>Menu &amp; prices</h2><span class="muted" style="font-size:13px">Tap + to add</span></div><div class="menu" id="menu"></div></section>
 
 </div>
@@ -132,7 +140,7 @@ window.bizInfo.then(b => {
   document.title = b.name; $('#bname').textContent = b.name; $('#htitle').textContent = b.name; $('#aname').textContent = b.name;
   $('#avatar').textContent = b.name.trim()[0].toUpperCase();
   renderReels(b.media || []);
-  const cover = (b.media || []).find(m => m.kind === 'image') || (b.media || [])[0];
+  const cover = b.cover;
   if (cover) { $('#art').hidden = true; $('#coverMedia').innerHTML = cover.kind === 'video' ? `<video src="${cover.url}" autoplay muted loop playsinline></video>` : `<img src="${cover.url}" alt="">`; }
   $('#htag').textContent = b.menu?.length ? `Fresh from ${b.name}. Browse the menu, chat or call to order, and pay securely in seconds.` : $('#htag').textContent;
   if (b.menu?.length) {

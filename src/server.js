@@ -48,7 +48,7 @@ async function businessOr404(id) {
 
 const profile = (b, req) => ({
   id: b.id, name: b.name, email: b.email, phoneNumber: b.phone_number,
-  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code, authProvider: b.auth_provider,
+  voiceReady: !!b.vapi_assistant_id, emailVerified: b.email_verified, shortCode: b.short_code, authProvider: b.auth_provider, cover: media.coverOf(b),
   sharedNumber: process.env.SHARED_PHONE_NUMBER || null,
   payout: b.bank_code ? { bankName: b.bank_name, accountName: b.account_name, accountLast4: String(b.account_number).slice(-4) } : null,
 });
@@ -259,6 +259,20 @@ me.get('/orders/:id/receipt', wrap(async (req, res) => {
 }));
 
 // ---------- Showcase media ----------
+// Cover photo/video for the customer page (separate from the Showcase gallery).
+me.post('/cover', wrap(async (req, res) => {
+  const key = String(req.body?.key || '');
+  if (!key.startsWith(`media/${req.businessId}/cover-`)) throw httpError(400, 'Invalid upload');
+  const b = await businessOr404(req.businessId);
+  await store.updateBusiness(b.id, { cover_key: key });
+  if (b.cover_key && b.cover_key !== key) await media.deleteKey(b.cover_key);
+  res.json(profile(await businessOr404(b.id), req));
+}));
+me.delete('/cover', wrap(async (req, res) => {
+  const b = await businessOr404(req.businessId);
+  await store.updateBusiness(b.id, { cover_key: null }); await media.deleteKey(b.cover_key);
+  res.json(profile(await businessOr404(b.id), req));
+}));
 me.get('/media', wrap(async (req, res) => res.json(await media.list(req.businessId))));
 me.post('/media/upload-url', wrap(async (req, res) => res.json(await media.uploadUrl(req.businessId, req.body || {}))));
 me.post('/media', wrap(async (req, res) => res.json(await media.register(req.businessId, req.body || {}))));
@@ -331,7 +345,7 @@ app.get('/api/public/:businessId', wrap(async (req, res) => {
     name: b.name, phoneNumber: b.phone_number,
     vapiPublicKey: process.env.VAPI_PUBLIC_KEY || null, vapiAssistantId: b.vapi_assistant_id,
     menu: (await store.getMenu(b.id)).filter(m => m.available),
-    media: await media.list(b.id, true),
+    media: await media.list(b.id, true), cover: media.coverOf(b),
   });
 }));
 

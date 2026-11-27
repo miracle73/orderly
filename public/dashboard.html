@@ -80,6 +80,11 @@
           <b>🛍️ Your customer ordering page</b>
           <p class="muted" style="margin:6px 0 12px">This is exactly what your customers see. They can chat with your AI to order and pay online, without calling. Share it on WhatsApp, Instagram and your flyers.</p>
           <div class="row"><a class="btn primary" id="orderLink2" target="_blank">Open customer page</a><button type="button" id="copyLink">Copy link</button></div></div></div>
+      <div class="card"><h3>Cover photo <span id="cover-status"></span></h3>
+        <p class="muted">The big picture at the top of your customer page, separate from your Showcase gallery. A wide photo of your shop, team or best product works best. Until you add one, customers see Orderly's default cover.</p>
+        <div id="coverPrev" style="aspect-ratio:3/1;max-width:640px;border-radius:16px;overflow:hidden;margin:12px 0;background:radial-gradient(40% 60% at 80% 20%,rgba(255,181,71,.55),transparent 70%),radial-gradient(35% 55% at 15% 85%,rgba(255,122,26,.5),transparent 70%),#140c06;display:grid;place-items:center;color:#f4efe6;font:700 18px var(--display)">Orderly default cover</div>
+        <div class="row"><label class="btn primary" style="cursor:pointer"><span id="coverBtnTxt">Upload cover</span><input id="coverFile" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" hidden></label>
+          <button type="button" id="coverDel" hidden>Use default cover</button></div></div>
       <div class="card"><h3>2. Get paid <span id="pay-status"></span></h3>
         <p class="muted">Customers pay by card, transfer or USSD. Your money is paid straight into this bank account.</p>
         <p id="payout-now" hidden style="margin:0 0 12px"></p>
@@ -135,6 +140,10 @@ function renderMe() {
   $('#orderLink').href = link; $('#orderLinkM').href = link; $('#orderLink2').href = link;
   $('#copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => { $('#copyLink').textContent = 'Copied ✓'; setTimeout(() => $('#copyLink').textContent = 'Copy link', 1500); });
   $('#f-pw').closest('.card').hidden = me.authProvider === 'google';
+  const cv = me.cover;
+  $('#coverPrev').innerHTML = cv ? (cv.kind === 'video' ? `<video src="${cv.url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>` : `<img src="${cv.url}" style="width:100%;height:100%;object-fit:cover" alt="">`) : 'Orderly default cover';
+  $('#coverDel').hidden = !cv; $('#coverBtnTxt').textContent = cv ? 'Change cover' : 'Upload cover';
+  $('#cover-status').innerHTML = cv ? '<span class="ok">✓ set</span>' : '<span class="muted">not set</span>';
   $('#pay-status').innerHTML = me.payout ? '<span class="ok">✓ connected</span>' : '<span class="muted">not set up</span>';
   $('#payout-now').hidden = !me.payout;
   if (me.payout) $('#payout-now').innerHTML = `Paying out to <b>${esc(me.payout.accountName)}</b> · ${esc(me.payout.bankName)} ••••${esc(me.payout.accountLast4)}<br><span class="muted">To change it, enter a new account below.</span>`;
@@ -149,7 +158,7 @@ function renderMe() {
 // Banner only while something is missing: menu items, bank account, or a phone line.
 async function renderBanner() {
   const menu = await api('/api/me/menu').catch(() => []);
-  const todo = [!menu.length && 'add your menu', !me.payout && 'add your bank account'].filter(Boolean);
+  const todo = [!menu.length && 'add your menu', !me.cover && 'add a cover photo', !me.payout && 'add your bank account'].filter(Boolean);
   const go = t => `<a href="#" onclick="document.querySelector('[data-tab=${t}]').click();return false">`;
   $('#banner').innerHTML = todo.length ? `<div class="card">👋 To go live: ${todo.map(x => x === 'add your menu' ? go('menu') + x + '</a>' : go('settings') + x + '</a>').join(', ')}.</div>` : '';
 }
@@ -171,6 +180,15 @@ $('#mcpBtn').onclick = guard(async () => {
   $('#mcpCopy').onclick = () => navigator.clipboard.writeText(key).then(() => toast('API key copied'));
   toast('MCP key created. Copy it now.');
 });
+$('#coverFile').onchange = guard(async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  toast('Uploading cover…', 'info');
+  const { uploadUrl, key } = await api('/api/me/media/upload-url', { method: 'POST', body: JSON.stringify({ contentType: f.type, size: f.size, purpose: 'cover' }) });
+  const up = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': f.type }, body: f });
+  if (!up.ok) throw new Error('Upload failed. Please try again.');
+  me = await api('/api/me/cover', { method: 'POST', body: JSON.stringify({ key }) }); renderMe(); toast('Cover updated. Your customer page looks great!');
+});
+$('#coverDel').onclick = guard(async () => { me = await api('/api/me/cover', { method: 'DELETE' }); renderMe(); toast('Back to the Orderly default cover'); });
 $('#sync').onclick = guard(async () => { me = await api('/api/me/voice/sync', { method: 'POST' }); renderMe(); toast('Voice agent updated'); });
 
 async function loadOrders() {

@@ -126,3 +126,6 @@ CREATE TABLE IF NOT EXISTS media (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS media_business_idx ON media (business_id, created_at DESC);
+
+-- v9: cover photo/video, separate from the Showcase gallery
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS cover_key TEXT;
