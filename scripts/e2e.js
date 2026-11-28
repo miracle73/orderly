@@ -278,7 +278,7 @@ const created = { emails: [], phoneIds: [] };
 
   // --- Orders dashboard
   const orders = (await req('/api/me/orders', { token: tA })).body;
-  ok(orders.length === 3, 'dashboard lists all 3 orders (web, phone, shared line)');
+  ok(orders.length === 4, 'dashboard lists all 4 orders (web, phone, shared line, WhatsApp)');
   r = await req(`/api/me/orders/${orders[0].id}`, { method: 'PATCH', token: tA, body: { fulfilment: 'preparing' } });
   ok(r.status === 200, 'update kitchen status');
   ok((await req(`/api/me/orders/${orders[0].id}`, { method: 'PATCH', token: tA, body: { fulfilment: 'hacked' } })).status === 400, 'bad kitchen status rejected');
