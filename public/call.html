@@ -93,17 +93,37 @@ body.chat-open .drawer{transform:none}body.chat-open .scrim{opacity:1;pointer-ev
 .drawer #log{flex:1;height:auto;min-height:0;padding:16px}
 .drawer .chips{padding:0 16px 10px}.drawer #f{padding:12px}
 @media(max-width:620px){.drawer{top:auto;left:0;right:0;bottom:0;width:100%;height:92vh;border-radius:26px 26px 0 0;transform:translateY(105%)}.fab{left:16px;right:16px;justify-content:center}}
+
+.heroGrid{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:22px;align-items:stretch}
+.heroGrid.solo{grid-template-columns:1fr}.heroGrid .cover{margin:0;min-height:440px}
+.workPanel{display:flex;flex-direction:column;min-width:0;padding:16px;border-radius:28px;background:linear-gradient(160deg,rgba(255,122,26,.14),rgba(255,255,255,.03) 50%);border:1px solid rgba(255,122,26,.22)}
+.workPanel .sec-h{margin:0 0 12px}.workPanel h2{font-size:18px}.workPanel .muted{display:block}
+.workPanel #reelRow{flex:1;margin:0;padding:2px 2px 4px;gap:12px;align-items:stretch}
+.workPanel .reel{width:auto;height:100%;min-height:340px;max-height:420px;aspect-ratio:9/16;flex:0 0 auto}
+@media(max-width:880px){
+  .shell{padding:14px 14px 90px}.top .name{font-size:16px}.top .open{display:none}
+  .heroGrid{grid-template-columns:1fr}.heroGrid .cover{order:-1;min-height:360px}
+  .cover .inner{padding:20px;gap:14px}.cover .avatar{width:64px;height:64px;font-size:30px;border-radius:20px}
+  .cover h1{font-size:34px}.cover p{font-size:14.5px}
+  .workPanel{padding:14px;border-radius:22px}.workPanel .reel{height:auto;min-height:0;max-height:none;width:42vw;max-width:190px}
+  .trust{gap:8px}.trust div{padding:11px;font-size:12.5px}.trust i{width:34px;height:34px;font-size:18px}
+  .menu{grid-template-columns:1fr}
+}
+@media(max-width:420px){.cover h1{font-size:29px}.cover .cta>*{padding:13px 14px;font-size:14px}}
 </style></head>
 <body><div class="shell">
 <div class="top"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>
   <span class="name" id="bname">Loading…</span><span class="open">Open now</span><button class="sp" id="reset">New chat</button></div>
 
-<section class="cover" id="cover"><div class="art" id="art"><span style="left:68%;top:14%">🛍️</span><span style="left:84%;top:40%;animation-delay:-2s">✨</span><span style="left:58%;top:46%;animation-delay:-4s;font-size:36px">🧡</span></div><div class="media" id="coverMedia"></div>
-  <div id="reels" hidden class="reelsIn"><div class="sec-h"><div><h2>Our work ✨</h2><span class="muted" style="font-size:13px">Swipe through and tap to watch</span></div>
+<div class="heroGrid solo" id="heroGrid">
+<div id="reels" hidden class="workPanel"><div class="sec-h"><div><h2>Our work ✨</h2><span class="muted" style="font-size:13px">Swipe through and tap to watch</span></div>
   <div class="arrows"><button type="button" onclick="slideReels(-1)" aria-label="Previous">‹</button><button type="button" onclick="slideReels(1)" aria-label="Next">›</button></div></div><div id="reelRow"></div></div>
+<section class="cover" id="cover"><div class="art" id="art"><span style="left:68%;top:14%">🛍️</span><span style="left:84%;top:40%;animation-delay:-2s">✨</span><span style="left:58%;top:46%;animation-delay:-4s;font-size:36px">🧡</span></div><div class="media" id="coverMedia"></div>
+  
   <div class="inner"><div class="avatar" id="avatar">·</div>
     <div><h1 id="htitle">Welcome</h1><p id="htag">Order, book or ask anything. Our AI assistant replies instantly, day or night, and you pay securely with Paystack.</p></div>
     <div class="cta"><button class="primary ring" id="vapiBtn" hidden>📞 Talk to us</button><button type="button" id="chatBtn">💬 Chat to order</button><a class="btn" id="waBtn" hidden target="_blank" rel="noopener" style="background:#25D366;color:#062b13;border:0;font-weight:600">WhatsApp</a></div></div></section>
+</div>
 <section class="trust"><div><i>⚡</i><span><b>Instant replies</b>No waiting on hold</span></div><div><i>🔒</i><span><b>Secure payment</b>Protected by Paystack</span></div>
   <div><i>🧾</i><span><b>Instant receipt</b>For every paid order</span></div><div><i>🌙</i><span><b>Open 24/7</b>Order any time</span></div></section>
 
@@ -219,7 +239,7 @@ $('#mic').onclick = () => {
 };
 let reelItems = [], reelIdx = 0;
 function renderReels(items) {
-  reelItems = items; if (!items.length) return; $('#reels').hidden = false;
+  reelItems = items; if (!items.length) return; $('#reels').hidden = false; $('#heroGrid').classList.remove('solo');
   $('#reelRow').innerHTML = items.map((m, i) => `<button class="reel" onclick="openReel(${i})">${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline autoplay preload="metadata"></video><span class="play">▶</span>` : `<img src="${m.url}" loading="lazy" alt="">`}${m.caption ? `<span class="cap">${esc(m.caption)}</span>` : ''}</button>`).join('');
 }
 function openReel(i) {
