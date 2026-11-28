@@ -110,6 +110,22 @@ body.chat-open .drawer{transform:none}body.chat-open .scrim{opacity:1;pointer-ev
   .menu{grid-template-columns:1fr}
 }
 @media(max-width:420px){.cover h1{font-size:29px}.cover .cta>*{padding:13px 14px;font-size:14px}}
+
+/* Our work: adapts to 1, 2 or many items */
+.workPanel .reel{box-shadow:0 18px 40px -16px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.1)}
+.workPanel .reel .cap{font-size:13px;padding:40px 14px 14px;background:linear-gradient(transparent,rgba(10,13,11,.92))}
+.workPanel.c1 .arrows,.workPanel.c2 .arrows,.workPanel.c1 .dots,.workPanel.c2 .dots{display:none}
+.workPanel.c1 #reelRow{overflow:visible}.workPanel.c1 .reel{width:100%;height:100%;min-height:340px;max-height:none;aspect-ratio:auto;border-radius:22px}
+.workPanel.c2 #reelRow{display:grid;grid-template-columns:1fr 1fr;overflow:visible}.workPanel.c2 .reel{width:100%;height:100%;min-height:300px;max-height:none;aspect-ratio:auto}
+.workPanel.cn .reel{scroll-snap-align:center}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:10px}.dots i{width:7px;height:7px;border-radius:99px;background:rgba(255,255,255,.22);transition:.25s}
+.dots i.on{width:20px;background:linear-gradient(90deg,var(--brand),var(--brand2))}
+.count{font-size:12px;font-weight:600;color:var(--brand2);background:rgba(255,122,26,.12);padding:3px 9px;border-radius:99px;margin-left:8px}
+@media(max-width:880px){
+  .workPanel.c1 .reel{width:100%;min-height:0;aspect-ratio:4/5}
+  .workPanel.c2 .reel{min-height:0;aspect-ratio:3/4}
+  .workPanel.cn .reel{width:64vw;max-width:260px;aspect-ratio:3/4}
+}
 </style></head>
 <body><div class="shell">
 <div class="top"><span class="logo"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></span>
@@ -240,6 +256,15 @@ $('#mic').onclick = () => {
 let reelItems = [], reelIdx = 0;
 function renderReels(items) {
   reelItems = items; if (!items.length) return; $('#reels').hidden = false; $('#heroGrid').classList.remove('solo');
+  const n = items.length;
+  $('#reels').className = 'workPanel ' + (n === 1 ? 'c1' : n === 2 ? 'c2' : 'cn');
+  const sub = document.querySelector('#reels .sec-h .muted'); if (sub) sub.textContent = n > 2 ? 'Swipe through and tap to watch' : 'Tap to take a closer look';
+  const h = document.querySelector('#reels h2'); if (h && n > 1) h.innerHTML = 'Our work ✨<span class="count">' + n + '</span>';
+  if (n > 2 && !document.querySelector('#reels .dots')) {
+    $('#reelRow').insertAdjacentHTML('afterend', '<div class="dots">' + items.map((_, i) => '<i' + (i ? '' : ' class="on"') + '></i>').join('') + '</div>');
+    $('#reelRow').addEventListener('scroll', () => { const r = $('#reelRow'), w = r.firstElementChild.offsetWidth + 12, i = Math.round(r.scrollLeft / w);
+      document.querySelectorAll('#reels .dots i').forEach((d, j) => d.classList.toggle('on', j === Math.min(i, n - 1))); }, { passive: true });
+  }
   $('#reelRow').innerHTML = items.map((m, i) => `<button class="reel" onclick="openReel(${i})">${m.kind === 'video' ? `<video src="${m.url}" muted loop playsinline autoplay preload="metadata"></video><span class="play">▶</span>` : `<img src="${m.url}" loading="lazy" alt="">`}${m.caption ? `<span class="cap">${esc(m.caption)}</span>` : ''}</button>`).join('');
 }
 function openReel(i) {
